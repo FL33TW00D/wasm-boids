@@ -73,14 +73,14 @@ fn build_tree(flock: &Vec<Starling>) -> KdTree<f32, usize, [f32; 2]> {
 impl Murmuration {
     pub fn new() -> Murmuration {
         utils::set_panic_hook();
-        let size = 1000;
+        let size = 800;
         let width = 2560;
         let height = 1440;
-        let speed_limit = 120.;
-        let visual_field = 6000.;
+        let speed_limit = 110.;
+        let visual_field = 4500.;
         let seperation_distance = 300.;
         let seperation_coefficient = 0.05;
-        let alignment_coefficient = 0.04;
+        let alignment_coefficient = 0.05;
         let cohesion_coefficient = 0.01;
         let boundary_margin = 150;
         let boundary_coefficient = 0.75;
