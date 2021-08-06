@@ -73,7 +73,7 @@ fn build_tree(flock: &Vec<Starling>) -> KdTree<f32, usize, [f32; 2]> {
 impl Murmuration {
     pub fn new() -> Murmuration {
         utils::set_panic_hook();
-        let size = 750;
+        let size = 1000;
         let width = 2560;
         let height = 1440;
         let speed_limit = 120.;
@@ -139,12 +139,7 @@ impl Murmuration {
             let mut new_dx = starling.dx + avg_x + x_delta + avg_dx;
             let mut new_dy = starling.dy + avg_y + y_delta + avg_dy;
 
-            let speed = (new_dx * new_dx) + (new_dy * new_dy);
-            if speed > self.speed_limit {
-                new_dx = (new_dx / speed) * self.speed_limit;
-                new_dy = (new_dy / speed) * self.speed_limit;
-            }
-
+            self.limit_speed(&mut new_dx, &mut new_dy);
             let mut new_starling = Starling {
                 x: starling.x + new_dx,
                 y: starling.y + new_dy,
@@ -160,6 +155,14 @@ impl Murmuration {
             new_flock.push(new_starling);
         }
         self.flock = new_flock;
+    }
+
+    fn limit_speed(&self, dx: &mut f32, dy: &mut f32) {
+        let speed = dx.powi(2) + dy.powi(2);
+        if speed > self.speed_limit {
+            *dx = (*dx / speed) * self.speed_limit;
+            *dy = (*dy / speed) * self.speed_limit;
+        }
     }
 
     fn check_bounds(&self, xpos: &f32, ypos: &f32, dx: &mut f32, dy: &mut f32) {
