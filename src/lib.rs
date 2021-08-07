@@ -1,6 +1,7 @@
 mod utils;
 
 extern crate js_sys;
+/*
 extern crate web_sys;
 
 macro_rules! log {
@@ -8,10 +9,11 @@ macro_rules! log {
         web_sys::console::log_1(&format!( $( $t )* ).into());
     }
 }
-
-use kdtree::distance::squared_euclidean;
-use kdtree::KdTree;
-
+*/
+use kiddo::distance::squared_euclidean;
+use kiddo::KdTree;
+use rand::prelude::*;
+/*
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -19,34 +21,77 @@ use wasm_bindgen::prelude::*;
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+*/
 
-#[wasm_bindgen]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Starling {
+struct Position {
     x: f32,
     y: f32,
-    dx: f32,
-    dy: f32,
 }
 
-impl Starling {
-    fn new(width: u32, height: u32) -> Starling {
-        Starling {
-            x: js_sys::Math::random() as f32 * width as f32,
-            y: js_sys::Math::random() as f32 * height as f32,
-            dx: js_sys::Math::random() as f32 * 10 as f32,
-            dy: js_sys::Math::random() as f32 * 10 as f32,
+impl Position {
+    fn new() -> Position {
+        Position { x: 0., y: 0. }
+    }
+
+    fn init_rand(width: u32, height: u32) -> Position {
+        let mut rng = rand::thread_rng();
+        let xseed: f64 = rng.gen();
+        let yseed: f64 = rng.gen();
+
+        Position {
+            x: xseed as f32 * width as f32,
+            y: yseed as f32 * height as f32,
         }
     }
 }
 
-#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Velocity {
+    dx: f32,
+    dy: f32,
+}
+
+impl Velocity {
+    fn new() -> Velocity {
+        Velocity { dx: 0., dy: 0. }
+    }
+
+    fn init_rand(speed: f32) -> Velocity {
+        let mut rng = rand::thread_rng();
+        let xseed: f64 = rng.gen();
+        let yseed: f64 = rng.gen();
+
+        Velocity {
+            dx: xseed as f32 * speed,
+            dy: yseed as f32 * speed,
+        }
+    }
+}
+
+//#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Starling {
+    position: Position,
+    velocity: Velocity,
+}
+
+impl Starling {
+    fn init_rand(width: u32, height: u32, speed_limit: f32) -> Starling {
+        Starling {
+            position: Position::init_rand(width, height),
+            velocity: Velocity::init_rand(speed_limit),
+        }
+    }
+}
+
+//#[wasm_bindgen]
 pub struct Murmuration {
     size: u32,
     width: u32,
     height: u32,
     flock: Vec<Starling>,
-    tree: KdTree<f32, usize, [f32; 2]>,
+    tree: KdTree<f32, usize, 2>,
     speed_limit: f32,
     visual_field: f32,
     seperation_distance: f32,
@@ -57,33 +102,36 @@ pub struct Murmuration {
     boundary_coefficient: f32,
 }
 
-fn build_tree(flock: &Vec<Starling>) -> KdTree<f32, usize, [f32; 2]> {
-    let mut tree = KdTree::new(2);
+fn build_tree(flock: &Vec<Starling>) -> KdTree<f32, usize, 2> {
+    let mut tree = KdTree::new();
+
     for (idx, starling) in flock.iter().enumerate() {
-        tree.add([starling.x, starling.y], idx).unwrap();
+        tree.add(&[starling.position.x, starling.position.y], idx)
+            .unwrap();
     }
+
     tree
 }
 
-#[wasm_bindgen]
+//#[wasm_bindgen]
 impl Murmuration {
     pub fn new() -> Murmuration {
         utils::set_panic_hook();
-        let size = 100;
-        let width = 2560;
-        let height = 1440;
+        let size = 1000;
+        let width = 2500;
+        let height = 1300;
         let speed_limit = 110.;
-        let visual_field = 4500.;
-        let seperation_distance = 300.;
+        let visual_field = 4000.;
+        let seperation_distance = 350.;
         let seperation_coefficient = 0.05;
         let alignment_coefficient = 0.05;
-        let cohesion_coefficient = 0.01;
+        let cohesion_coefficient = 0.0075;
         let boundary_margin = 150;
-        let boundary_coefficient = 0.75;
+        let boundary_coefficient = 0.7;
 
         let mut flock: Vec<Starling> = Vec::new();
         for _ in 0..size {
-            flock.push(Starling::new(width, height));
+            flock.push(Starling::init_rand(width, height, 10.));
         }
 
         let tree = build_tree(&flock);
@@ -130,108 +178,121 @@ impl Murmuration {
             let visual_ids = self.extract_ids(&visual_neighbours);
             let local_ids = self.neighbour_subset(&mut visual_neighbours, self.seperation_distance);
 
-            let (avg_x, avg_y) = self.cohere(&starling, &self.flock, &visual_ids);
-            let (x_delta, y_delta) = self.seperate(&starling, &self.flock, &local_ids);
-            let (avg_dx, avg_dy) = self.align(&self.flock, &visual_ids);
+            let center_of_mass = self.cohere(&starling, &self.flock, &visual_ids);
+            let position_delta = self.seperate(&starling, &self.flock, &local_ids);
+            let average_vel = self.align(&self.flock, &visual_ids);
 
-            let mut new_dx = starling.dx + avg_x + x_delta + avg_dx;
-            let mut new_dy = starling.dy + avg_y + y_delta + avg_dy;
-
-            self.limit_speed(&mut new_dx, &mut new_dy);
-            let mut new_starling = Starling {
-                x: starling.x + new_dx,
-                y: starling.y + new_dy,
-                dx: new_dx,
-                dy: new_dy,
+            let mut updated_velocity = Velocity {
+                dx: starling.velocity.dx + center_of_mass.x + position_delta.x + average_vel.dx,
+                dy: starling.velocity.dy + center_of_mass.y + position_delta.y + average_vel.dy,
             };
 
-            self.check_bounds(
-                &new_starling.x,
-                &new_starling.y,
-                &mut new_starling.dx,
-                &mut new_starling.dy,
-            );
-            new_flock.push(new_starling);
+            let updated_position = Position {
+                x: starling.position.x + updated_velocity.dx,
+                y: starling.position.y + updated_velocity.dy,
+            };
+
+            self.limit_speed(&mut updated_velocity);
+
+            let mut updated_starling = Starling {
+                position: updated_position,
+                velocity: updated_velocity,
+            };
+
+            self.check_bounds(&mut updated_starling);
+            new_flock.push(updated_starling);
         }
         self.flock = new_flock;
     }
 
-    fn limit_speed(&self, dx: &mut f32, dy: &mut f32) {
-        let speed = dx.powi(2) + dy.powi(2);
+    fn limit_speed(&self, velocity: &mut Velocity) {
+        let speed = velocity.dx.powi(2) + velocity.dy.powi(2);
         if speed > self.speed_limit {
-            *dx = (*dx / speed) * self.speed_limit;
-            *dy = (*dy / speed) * self.speed_limit;
+            velocity.dx = (velocity.dx / speed) * self.speed_limit;
+            velocity.dy = (velocity.dy / speed) * self.speed_limit;
         }
     }
 
-    fn check_bounds(&self, xpos: &f32, ypos: &f32, dx: &mut f32, dy: &mut f32) {
-        if *xpos > (self.width - self.boundary_margin) as f32 {
-            *dx -= self.boundary_coefficient;
+    fn check_bounds(&self, updated_starling: &mut Starling) {
+        let pos = updated_starling.position;
+        let mut vel = updated_starling.velocity;
+
+        if pos.x > (self.width - self.boundary_margin) as f32 {
+            vel.dx -= self.boundary_coefficient;
         }
-        if *xpos < self.boundary_margin as f32 {
-            *dx += self.boundary_coefficient;
+        if pos.x < self.boundary_margin as f32 {
+            vel.dx += self.boundary_coefficient;
         }
-        if *ypos > (self.height - self.boundary_margin) as f32 {
-            *dy -= self.boundary_coefficient;
+        if pos.y > (self.height - self.boundary_margin) as f32 {
+            vel.dy -= self.boundary_coefficient;
         }
-        if *ypos < self.boundary_margin as f32 {
-            *dy += self.boundary_coefficient;
+        if pos.y < self.boundary_margin as f32 {
+            vel.dy += self.boundary_coefficient;
         }
+        updated_starling.velocity = vel;
     }
 
+    //Steer to avoid crowding local flockmates
     fn seperate(
         &self,
         starling: &Starling,
         flock: &Vec<Starling>,
         neighbours: &Vec<usize>,
-    ) -> (f32, f32) {
-        let mut x_delta = 0.;
-        let mut y_delta = 0.;
+    ) -> Position {
+        let mut pos_delta = Position::new();
         for idx in neighbours.iter() {
-            x_delta += starling.x - flock.get(*idx).unwrap().x;
-            y_delta += starling.y - flock.get(*idx).unwrap().y;
+            let pos = flock.get(*idx).unwrap().position;
+            pos_delta.x = starling.position.x - pos.x;
+            pos_delta.y = starling.position.y - pos.y;
         }
-        (
-            x_delta * self.seperation_coefficient,
-            y_delta * self.seperation_coefficient,
-        )
+
+        pos_delta.x *= self.seperation_coefficient;
+        pos_delta.y *= self.seperation_coefficient;
+
+        pos_delta
     }
 
-    fn align(&self, flock: &Vec<Starling>, neighbours: &Vec<usize>) -> (f32, f32) {
-        let mut avg_dx = 0.;
-        let mut avg_dy = 0.;
+    //Steer towards the average heading of local flockmates
+    fn align(&self, flock: &Vec<Starling>, neighbours: &Vec<usize>) -> Velocity {
+        let mut avg_vel = Velocity::new();
+
         for idx in neighbours.iter() {
-            avg_dx += flock.get(*idx).unwrap().dx;
-            avg_dy += flock.get(*idx).unwrap().dy;
+            let vel = flock.get(*idx).unwrap().velocity;
+            avg_vel.dx += vel.dx;
+            avg_vel.dy += vel.dy;
         }
 
         if neighbours.len() > 0 {
-            avg_dx = (avg_dx / neighbours.len() as f32) * self.alignment_coefficient;
-            avg_dy = (avg_dy / neighbours.len() as f32) * self.alignment_coefficient;
+            avg_vel.dx = (avg_vel.dx / neighbours.len() as f32) * self.alignment_coefficient;
+            avg_vel.dy = (avg_vel.dy / neighbours.len() as f32) * self.alignment_coefficient;
         }
 
-        (avg_dx, avg_dy)
+        avg_vel
     }
 
+    //Steer to move towards the average position (center of mass) of local flockmates
     fn cohere(
         &self,
         starling: &Starling,
         flock: &Vec<Starling>,
         neighbours: &Vec<usize>,
-    ) -> (f32, f32) {
-        let mut avg_x = 0.;
-        let mut avg_y = 0.;
+    ) -> Position {
+        let mut avg_pos = Position::new();
 
         for idx in neighbours.iter() {
-            avg_x += flock.get(*idx).unwrap().x;
-            avg_y += flock.get(*idx).unwrap().y;
+            let pos = flock.get(*idx).unwrap().position;
+            avg_pos.x += pos.x;
+            avg_pos.y += pos.y;
         }
 
         if neighbours.len() > 0 {
-            avg_x = (avg_x / neighbours.len() as f32 - starling.x) * self.cohesion_coefficient;
-            avg_y = (avg_y / neighbours.len() as f32 - starling.y) * self.cohesion_coefficient;
+            avg_pos.x = (avg_pos.x / neighbours.len() as f32 - starling.position.x)
+                * self.cohesion_coefficient;
+            avg_pos.y = (avg_pos.y / neighbours.len() as f32 - starling.position.y)
+                * self.cohesion_coefficient;
         }
-        (avg_x, avg_y)
+
+        avg_pos
     }
 
     //Returns a vector (distance_from_point:f32, vec_idx:&usize)
@@ -239,21 +300,25 @@ impl Murmuration {
         let mut neighbour_idx = Vec::new();
         let neighbours = self
             .tree
-            .within(&[starling.x, starling.y], range, &squared_euclidean)
+            .within(
+                &[starling.position.x, starling.position.y],
+                range,
+                &squared_euclidean,
+            )
             .unwrap();
 
-        //Dumb way of checking if the thing isn't self, must think about how to speed this up
         for data in neighbours.iter() {
-            if data.0 != 0. {
-                neighbour_idx.push(*data);
-            }
+            neighbour_idx.push(*data);
+        }
+
+        if neighbour_idx.len() == 1 {
+            neighbour_idx.remove(0);
         }
 
         neighbour_idx
     }
 
     fn neighbour_subset(&self, neighbours: &mut Vec<(f32, &usize)>, range: f32) -> Vec<usize> {
-        neighbours.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         let partition = neighbours.partition_point(|&x| x.0 < range);
         self.extract_ids(&neighbours[..partition].to_vec())
     }
