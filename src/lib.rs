@@ -69,7 +69,7 @@ fn build_tree(flock: &Vec<Starling>) -> KdTree<f32, usize, [f32; 2]> {
 impl Murmuration {
     pub fn new() -> Murmuration {
         utils::set_panic_hook();
-        let size = 1000;
+        let size = 100;
         let width = 2560;
         let height = 1440;
         let speed_limit = 110.;
