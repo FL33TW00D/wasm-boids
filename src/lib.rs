@@ -1,8 +1,3 @@
-//TODO
-//Threading
-//Benchmarking
-//web
-#![feature(allocator_api)]
 mod utils;
 
 extern crate js_sys;
@@ -18,6 +13,7 @@ use kdtree::distance::squared_euclidean;
 use kdtree::KdTree;
 
 use wasm_bindgen::prelude::*;
+
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
 #[cfg(feature = "wee_alloc")]
@@ -73,7 +69,7 @@ fn build_tree(flock: &Vec<Starling>) -> KdTree<f32, usize, [f32; 2]> {
 impl Murmuration {
     pub fn new() -> Murmuration {
         utils::set_panic_hook();
-        let size = 800;
+        let size = 1000;
         let width = 2560;
         let height = 1440;
         let speed_limit = 110.;
@@ -128,13 +124,15 @@ impl Murmuration {
     pub fn tick(&mut self) {
         self.tree = build_tree(&self.flock);
         let mut new_flock = Vec::new();
-        for starling in self.flock.iter() {
-            let local_idxs = self.get_neighbours(starling, self.seperation_distance);
-            let visual_idxs = self.get_neighbours(starling, self.visual_field);
 
-            let (avg_x, avg_y) = self.cohere(&starling, &self.flock, &visual_idxs);
-            let (x_delta, y_delta) = self.seperate(&starling, &self.flock, &local_idxs);
-            let (avg_dx, avg_dy) = self.align(&self.flock, &visual_idxs);
+        for starling in self.flock.iter() {
+            let mut visual_neighbours = self.get_neighbours(starling, self.visual_field);
+            let visual_ids = self.extract_ids(&visual_neighbours);
+            let local_ids = self.neighbour_subset(&mut visual_neighbours, self.seperation_distance);
+
+            let (avg_x, avg_y) = self.cohere(&starling, &self.flock, &visual_ids);
+            let (x_delta, y_delta) = self.seperate(&starling, &self.flock, &local_ids);
+            let (avg_dx, avg_dy) = self.align(&self.flock, &visual_ids);
 
             let mut new_dx = starling.dx + avg_x + x_delta + avg_dx;
             let mut new_dy = starling.dy + avg_y + y_delta + avg_dy;
@@ -146,6 +144,7 @@ impl Murmuration {
                 dx: new_dx,
                 dy: new_dy,
             };
+
             self.check_bounds(
                 &new_starling.x,
                 &new_starling.y,
@@ -235,22 +234,35 @@ impl Murmuration {
         (avg_x, avg_y)
     }
 
-    fn get_neighbours(&self, starling: &Starling, range: f32) -> Vec<usize> {
-        //within returns a Vector of (distance from provided point, &data on that point)
+    //Returns a vector (distance_from_point:f32, vec_idx:&usize)
+    fn get_neighbours(&self, starling: &Starling, range: f32) -> Vec<(f32, &usize)> {
         let mut neighbour_idx = Vec::new();
         let neighbours = self
             .tree
             .within(&[starling.x, starling.y], range, &squared_euclidean)
             .unwrap();
 
+        //Dumb way of checking if the thing isn't self, must think about how to speed this up
         for data in neighbours.iter() {
-            let id = *data.1;
-            //dumb way to check if the point found within the range isn't itself
             if data.0 != 0. {
-                neighbour_idx.push(id);
+                neighbour_idx.push(*data);
             }
         }
 
         neighbour_idx
+    }
+
+    fn neighbour_subset(&self, neighbours: &mut Vec<(f32, &usize)>, range: f32) -> Vec<usize> {
+        neighbours.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        let partition = neighbours.partition_point(|&x| x.0 < range);
+        self.extract_ids(&neighbours[..partition].to_vec())
+    }
+
+    fn extract_ids(&self, neighbours: &Vec<(f32, &usize)>) -> Vec<usize> {
+        let mut ids = Vec::new();
+        for tup in neighbours.iter() {
+            ids.push(*tup.1);
+        }
+        ids
     }
 }
