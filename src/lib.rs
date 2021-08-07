@@ -1,19 +1,16 @@
 mod utils;
 
 extern crate js_sys;
-/*
-extern crate web_sys;
 
 macro_rules! log {
     ( $( $t:tt )* ) => {
         web_sys::console::log_1(&format!( $( $t )* ).into());
     }
 }
-*/
+
 use kiddo::distance::squared_euclidean;
 use kiddo::KdTree;
-use rand::prelude::*;
-/*
+
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -21,7 +18,6 @@ use wasm_bindgen::prelude::*;
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-*/
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Position {
@@ -35,13 +31,9 @@ impl Position {
     }
 
     fn init_rand(width: u32, height: u32) -> Position {
-        let mut rng = rand::thread_rng();
-        let xseed: f64 = rng.gen();
-        let yseed: f64 = rng.gen();
-
         Position {
-            x: xseed as f32 * width as f32,
-            y: yseed as f32 * height as f32,
+            x: js_sys::Math::random() as f32 * width as f32,
+            y: js_sys::Math::random() as f32 * height as f32,
         }
     }
 }
@@ -58,18 +50,14 @@ impl Velocity {
     }
 
     fn init_rand(speed: f32) -> Velocity {
-        let mut rng = rand::thread_rng();
-        let xseed: f64 = rng.gen();
-        let yseed: f64 = rng.gen();
-
         Velocity {
-            dx: xseed as f32 * speed,
-            dy: yseed as f32 * speed,
+            dx: js_sys::Math::random() as f32 * speed,
+            dy: js_sys::Math::random() as f32 * speed,
         }
     }
 }
 
-//#[wasm_bindgen]
+#[wasm_bindgen]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Starling {
     position: Position,
@@ -85,7 +73,7 @@ impl Starling {
     }
 }
 
-//#[wasm_bindgen]
+#[wasm_bindgen]
 pub struct Murmuration {
     size: u32,
     width: u32,
@@ -113,21 +101,21 @@ fn build_tree(flock: &Vec<Starling>) -> KdTree<f32, usize, 2> {
     tree
 }
 
-//#[wasm_bindgen]
+#[wasm_bindgen]
 impl Murmuration {
     pub fn new() -> Murmuration {
         utils::set_panic_hook();
-        let size = 1000;
-        let width = 2500;
+        let size = 700;
+        let width = 2560;
         let height = 1300;
-        let speed_limit = 110.;
-        let visual_field = 4000.;
-        let seperation_distance = 350.;
+        let speed_limit = 90.;
+        let visual_field = 5625.;
+        let seperation_distance = 500.;
         let seperation_coefficient = 0.05;
         let alignment_coefficient = 0.05;
-        let cohesion_coefficient = 0.0075;
-        let boundary_margin = 150;
-        let boundary_coefficient = 0.7;
+        let cohesion_coefficient = 0.008;
+        let boundary_margin = 500;
+        let boundary_coefficient = 0.25;
 
         let mut flock: Vec<Starling> = Vec::new();
         for _ in 0..size {

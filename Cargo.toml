@@ -5,8 +5,8 @@ authors = ["Christopher Fleetwood <fleetwoodpersonal@gmail.com>"]
 edition = "2018"
 
 [lib]
-crate-type = ["rlib"]
-#crate-type = ["cdylib", "rlib"]
+#crate-type = ["rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
@@ -15,7 +15,6 @@ default = ["console_error_panic_hook"]
 wasm-bindgen = "0.2.63"
 js-sys = "0.3.52"
 kiddo = { git = "https://github.com/FL33TW00D/kiddo" }
-rand = "0.8.4"
 
 console_error_panic_hook = { version = "0.1.6", optional = true }
 wee_alloc = { version = "0.4.5", optional = true }
