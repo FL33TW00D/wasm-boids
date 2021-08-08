@@ -110,7 +110,7 @@ impl Default for Murmuration {
 impl Murmuration {
     pub fn new() -> Murmuration {
         utils::set_panic_hook();
-        let size = 500;
+        let size = 650;
         let width = 2560;
         let height = 1440;
         let speed_limit = 90.;
@@ -120,7 +120,7 @@ impl Murmuration {
         let alignment_coefficient = 0.05;
         let cohesion_coefficient = 0.008;
         let boundary_margin = 0.2;
-        let boundary_coefficient = 0.3;
+        let boundary_coefficient = 0.25;
 
         let mut flock: Vec<Starling> = Vec::new();
         for _ in 0..size {
