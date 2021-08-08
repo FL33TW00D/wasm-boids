@@ -86,7 +86,7 @@ pub struct Murmuration {
     seperation_coefficient: f32,
     alignment_coefficient: f32,
     cohesion_coefficient: f32,
-    boundary_margin: u32,
+    boundary_margin: f32,
     boundary_coefficient: f32,
 }
 
@@ -107,14 +107,14 @@ impl Murmuration {
         utils::set_panic_hook();
         let size = 700;
         let width = 2560;
-        let height = 1300;
+        let height = 1440;
         let speed_limit = 90.;
         let visual_field = 5625.;
         let seperation_distance = 500.;
         let seperation_coefficient = 0.05;
         let alignment_coefficient = 0.05;
         let cohesion_coefficient = 0.008;
-        let boundary_margin = 500;
+        let boundary_margin = 0.2;
         let boundary_coefficient = 0.25;
 
         let mut flock: Vec<Starling> = Vec::new();
@@ -205,16 +205,16 @@ impl Murmuration {
         let pos = updated_starling.position;
         let mut vel = updated_starling.velocity;
 
-        if pos.x > (self.width - self.boundary_margin) as f32 {
+        if pos.x > (self.width as f32 - (self.boundary_margin * self.width as f32)) {
             vel.dx -= self.boundary_coefficient;
         }
-        if pos.x < self.boundary_margin as f32 {
+        if pos.x < (self.boundary_margin * self.width as f32) {
             vel.dx += self.boundary_coefficient;
         }
-        if pos.y > (self.height - self.boundary_margin) as f32 {
+        if pos.y > (self.height as f32 - (self.height as f32 * self.boundary_margin)) {
             vel.dy -= self.boundary_coefficient;
         }
-        if pos.y < self.boundary_margin as f32 {
+        if pos.y < (self.boundary_margin * self.height as f32) {
             vel.dy += self.boundary_coefficient;
         }
         updated_starling.velocity = vel;

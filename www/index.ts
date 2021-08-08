@@ -1,5 +1,5 @@
 import { Murmuration, Starling } from "wasm-boids";
-import { memory } from "wasm-boids/wasm_boids_bg";
+import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 
 const murmuration = Murmuration.new();
 const width = murmuration.width();
