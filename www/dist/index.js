@@ -6,6 +6,7 @@ const height = murmuration.height();
 const size = murmuration.size();
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+ctx.fillStyle = "rgba(100, 50, 0, 1)";
 class fpsCounter {
     constructor() {
         this.fps = document.getElementById("fps");
@@ -44,17 +45,16 @@ max of last 100 = ${Math.round(max)}
 `.trim();
     }
 }
-let fps = new fpsCounter();
-canvas.height = height;
-canvas.width = width;
-ctx.fillStyle = "rgb(100,50,0)";
+//let fps = new fpsCounter();
 const renderLoop = () => {
-    fps.render();
+    //fps.render();
     murmuration.tick();
     draw();
     requestAnimationFrame(renderLoop);
 };
 const draw = () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const starlingPtr = murmuration.flock();
     const starlings = new Float32Array(memory.buffer, starlingPtr, size * 4);

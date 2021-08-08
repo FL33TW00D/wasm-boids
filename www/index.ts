@@ -10,6 +10,7 @@ const canvas: HTMLCanvasElement = document.getElementById(
   "canvas"
 ) as HTMLCanvasElement;
 const ctx: CanvasRenderingContext2D = canvas.getContext("2d");
+ctx.fillStyle = "rgba(100, 50, 0, 1)";
 
 class fpsCounter {
   fps: HTMLElement;
@@ -58,15 +59,10 @@ max of last 100 = ${Math.round(max)}
   }
 }
 
-let fps = new fpsCounter();
-
-canvas.height = height;
-canvas.width = width;
-ctx.fillStyle = "rgb(100,50,0)";
-
+//let fps = new fpsCounter();
 
 const renderLoop = () => {
-  fps.render();
+  //fps.render();
   murmuration.tick();
 
   draw();
@@ -74,6 +70,8 @@ const renderLoop = () => {
 };
 
 const draw = () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const starlingPtr = murmuration.flock();
   const starlings = new Float32Array(memory.buffer, starlingPtr, size * 4);
@@ -102,6 +100,5 @@ const drawStarling = (xpos: number, ypos: number, dx: number, dy: number) => {
   ctx.fill();
   ctx.closePath();
 };
-
 
 requestAnimationFrame(renderLoop);
