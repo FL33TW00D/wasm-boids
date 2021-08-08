@@ -90,7 +90,7 @@ pub struct Murmuration {
     boundary_coefficient: f32,
 }
 
-fn build_tree(flock: &Vec<Starling>) -> KdTree<f32, usize, 2> {
+fn build_tree(flock: &[Starling]) -> KdTree<f32, usize, 2> {
     let mut tree = KdTree::new();
 
     for (idx, starling) in flock.iter().enumerate() {
@@ -100,12 +100,17 @@ fn build_tree(flock: &Vec<Starling>) -> KdTree<f32, usize, 2> {
 
     tree
 }
+impl Default for Murmuration {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[wasm_bindgen]
 impl Murmuration {
     pub fn new() -> Murmuration {
         utils::set_panic_hook();
-        let size = 250;
+        let size = 500;
         let width = 2560;
         let height = 1440;
         let speed_limit = 90.;
@@ -115,7 +120,7 @@ impl Murmuration {
         let alignment_coefficient = 0.05;
         let cohesion_coefficient = 0.008;
         let boundary_margin = 0.2;
-        let boundary_coefficient = 0.2;
+        let boundary_coefficient = 0.3;
 
         let mut flock: Vec<Starling> = Vec::new();
         for _ in 0..size {
@@ -221,12 +226,7 @@ impl Murmuration {
     }
 
     //Steer to avoid crowding local flockmates
-    fn seperate(
-        &self,
-        starling: &Starling,
-        flock: &Vec<Starling>,
-        neighbours: &Vec<usize>,
-    ) -> Position {
+    fn seperate(&self, starling: &Starling, flock: &[Starling], neighbours: &[usize]) -> Position {
         let mut pos_delta = Position::new();
         for idx in neighbours.iter() {
             let pos = flock.get(*idx).unwrap().position;
@@ -241,7 +241,7 @@ impl Murmuration {
     }
 
     //Steer towards the average heading of local flockmates
-    fn align(&self, flock: &Vec<Starling>, neighbours: &Vec<usize>) -> Velocity {
+    fn align(&self, flock: &[Starling], neighbours: &[usize]) -> Velocity {
         let mut avg_vel = Velocity::new();
 
         for idx in neighbours.iter() {
@@ -250,7 +250,7 @@ impl Murmuration {
             avg_vel.dy += vel.dy;
         }
 
-        if neighbours.len() > 0 {
+        if !neighbours.is_empty() {
             avg_vel.dx = (avg_vel.dx / neighbours.len() as f32) * self.alignment_coefficient;
             avg_vel.dy = (avg_vel.dy / neighbours.len() as f32) * self.alignment_coefficient;
         }
@@ -259,12 +259,7 @@ impl Murmuration {
     }
 
     //Steer to move towards the average position (center of mass) of local flockmates
-    fn cohere(
-        &self,
-        starling: &Starling,
-        flock: &Vec<Starling>,
-        neighbours: &Vec<usize>,
-    ) -> Position {
+    fn cohere(&self, starling: &Starling, flock: &[Starling], neighbours: &[usize]) -> Position {
         let mut avg_pos = Position::new();
 
         for idx in neighbours.iter() {
@@ -273,7 +268,7 @@ impl Murmuration {
             avg_pos.y += pos.y;
         }
 
-        if neighbours.len() > 0 {
+        if !neighbours.is_empty() {
             avg_pos.x = (avg_pos.x / neighbours.len() as f32 - starling.position.x)
                 * self.cohesion_coefficient;
             avg_pos.y = (avg_pos.y / neighbours.len() as f32 - starling.position.y)
@@ -311,7 +306,7 @@ impl Murmuration {
         self.extract_ids(&neighbours[..partition].to_vec())
     }
 
-    fn extract_ids(&self, neighbours: &Vec<(f32, &usize)>) -> Vec<usize> {
+    fn extract_ids(&self, neighbours: &[(f32, &usize)]) -> Vec<usize> {
         let mut ids = Vec::new();
         for tup in neighbours.iter() {
             ids.push(*tup.1);
