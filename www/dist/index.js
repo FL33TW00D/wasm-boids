@@ -1,12 +1,12 @@
 import { Murmuration } from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
-const murmuration = Murmuration.new();
-const width = murmuration.width();
-const height = murmuration.height();
-const size = murmuration.size();
 const canvas = document.getElementById("canvas");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight - 200;
 const ctx = canvas.getContext("2d");
 ctx.fillStyle = "rgba(100, 50, 0, 1)";
+const murmuration = Murmuration.new(canvas.width, canvas.height - 200);
+const size = murmuration.size();
 class fpsCounter {
     constructor() {
         this.fps = document.getElementById("fps");
@@ -65,7 +65,7 @@ const draw = () => {
 //convert this to take a starling object
 const drawStarling = (xpos, ypos, dx, dy) => {
     ctx.beginPath();
-    ctx.ellipse(Math.floor(xpos), Math.floor(ypos), 5, 2, Math.atan(dy / dx), 0, Math.PI * 2);
+    ctx.ellipse(xpos, ypos, 3, 1.5, Math.atan(dy / dx), 0, Math.PI * 2);
     ctx.fill();
     ctx.closePath();
 };
