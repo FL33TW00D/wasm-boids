@@ -26,11 +26,11 @@ struct Position {
 }
 
 impl Position {
-    fn new() -> Position {
+    fn new() -> Self {
         Position { x: 0., y: 0. }
     }
 
-    fn init_rand(width: u32, height: u32) -> Position {
+    fn init_rand(width: u32, height: u32) -> Self {
         Position {
             x: js_sys::Math::random() as f32 * width as f32,
             y: js_sys::Math::random() as f32 * height as f32,
@@ -45,11 +45,11 @@ struct Velocity {
 }
 
 impl Velocity {
-    fn new() -> Velocity {
+    fn new() -> Self {
         Velocity { dx: 0., dy: 0. }
     }
 
-    fn init_rand(speed: f32) -> Velocity {
+    fn init_rand(speed: f32) -> Self {
         Velocity {
             dx: js_sys::Math::random() as f32 * speed,
             dy: js_sys::Math::random() as f32 * speed,
@@ -65,7 +65,7 @@ pub struct Starling {
 }
 
 impl Starling {
-    fn init_rand(width: u32, height: u32, speed_limit: f32) -> Starling {
+    fn init_rand(width: u32, height: u32, speed_limit: f32) -> Self {
         Starling {
             position: Position::init_rand(width, height),
             velocity: Velocity::init_rand(speed_limit),
@@ -102,24 +102,23 @@ fn build_tree(flock: &[Starling]) -> KdTree<f32, usize, 2> {
 }
 impl Default for Murmuration {
     fn default() -> Self {
-        Self::new()
+        Self::new(1920, 1080)
     }
 }
 
 #[wasm_bindgen]
 impl Murmuration {
-    pub fn new() -> Murmuration {
+    pub fn new(width: u32, height: u32) -> Murmuration {
         utils::set_panic_hook();
-        let size = 650;
-        let width = 2560;
-        let height = 1440;
-        let speed_limit = 90.;
-        let visual_field = 5625.;
-        let seperation_distance = 500.;
+        let size = 600;
+        let speed_limit = 70.;
+        let visual_field = 5000.;
+        let seperation_distance = 600.;
         let seperation_coefficient = 0.05;
         let alignment_coefficient = 0.05;
         let cohesion_coefficient = 0.008;
-        let boundary_margin = 0.2;
+        //boundary margin and coefficient must be relative to canvas size 
+        let boundary_margin = 0.15;
         let boundary_coefficient = 0.25;
 
         let mut flock: Vec<Starling> = Vec::new();
