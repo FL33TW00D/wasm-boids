@@ -1,106 +1,319 @@
-import { Murmuration, Starling } from "wasm-boids";
-import { memory } from "wasm-boids/wasm_boids_bg.wasm";
+import { mat2, mat3, mat4, vec2, vec3, vec4 } from "gl-matrix";
 
-const canvas: HTMLCanvasElement = document.getElementById(
-  "canvas"
-) as HTMLCanvasElement;
-
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight - 200;
-
-const ctx: CanvasRenderingContext2D = canvas.getContext("2d");
-ctx.fillStyle = "rgba(100, 50, 0, 1)";
-
-const murmuration = Murmuration.new(canvas.width, canvas.height - 200);
-const size = murmuration.size();
-
-class fpsCounter {
-  fps: HTMLElement;
-  frames: any;
-  lastFrameTimeStamp: any;
-
-  constructor() {
-    this.fps = document.getElementById("fps");
-    this.frames = [];
-    this.lastFrameTimeStamp = performance.now();
+function createShader(
+  gl: WebGL2RenderingContext,
+  shaderType: number,
+  source: string
+): WebGLShader {
+  let shader = gl.createShader(shaderType);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  let success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+  if (success) {
+    return shader;
   }
 
-  render() {
-    // Convert the delta time since the last frame render into a measure
-    // of frames per second.
-    const now = performance.now();
-    const delta = now - this.lastFrameTimeStamp;
-    this.lastFrameTimeStamp = now;
-    const fps = (1 / delta) * 1000;
+  console.log(gl.getShaderInfoLog(shader));
+  gl.deleteShader(shader);
+}
 
-    // Save only the latest 100 timings.
-    this.frames.push(fps);
-    if (this.frames.length > 100) {
-      this.frames.shift();
-    }
+function createProgram(
+  gl: WebGL2RenderingContext,
+  vertexShader: WebGLShader,
+  fragmentShader: WebGLShader
+) {
+  let program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  let success = gl.getProgramParameter(program, gl.LINK_STATUS);
+  if (success) {
+    return program;
+  }
 
-    // Find the max, min, and mean of our 100 latest timings.
-    let min = Infinity;
-    let max = -Infinity;
-    let sum = 0;
-    for (let i = 0; i < this.frames.length; i++) {
-      sum += this.frames[i];
-      min = Math.min(this.frames[i], min);
-      max = Math.max(this.frames[i], max);
-    }
-    let mean = sum / this.frames.length;
+  console.log(gl.getProgramInfoLog(program));
+  gl.deleteProgram(program);
+}
 
-    // Render the statistics.
-    this.fps.textContent = `
-Frames per Second:
-         latest = ${Math.round(fps)}
-avg of last 100 = ${Math.round(mean)}
-min of last 100 = ${Math.round(min)}
-max of last 100 = ${Math.round(max)}
-`.trim();
+function main() {
+  const canvas: HTMLCanvasElement = document.getElementById(
+    "canvas"
+  ) as HTMLCanvasElement;
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const gl: WebGL2RenderingContext = canvas.getContext("webgl2");
+
+  if (!gl) {
+    console.log("No WebGL.");
+    return;
+  }
+
+  const vertexShaderSource = `#version 300 es
+    in vec4 a_position;
+    in vec4 a_color;
+
+    uniform mat4 u_matrix;
+
+    out vec4 v_color;
+
+    void main() {
+      gl_Position = u_matrix * a_position;
+
+      v_color = a_color;
+    } 
+  `;
+
+  const fragmentShaderSource = `#version 300 es
+        precision mediump float;
+
+        in vec4 v_color;
+
+        out vec4 outColor;
+
+        void main() {
+            outColor = v_color;
+        }
+  `;
+
+  let vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+  let fragmentShader = createShader(
+    gl,
+    gl.FRAGMENT_SHADER,
+    fragmentShaderSource
+  );
+
+  let program = createProgram(gl, vertexShader, fragmentShader);
+
+  let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+  let colorAttributeLocation = gl.getAttribLocation(program, "a_color");
+
+  let matrixLocation = gl.getUniformLocation(program, "u_matrix");
+
+  let positionBuffer = gl.createBuffer();
+
+  let vao = gl.createVertexArray();
+
+  gl.bindVertexArray(vao);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+  setGeometry(gl);
+  let size = 3;
+  let dtype = gl.FLOAT;
+  let normalize = false;
+  let stride = 0;
+  let offset = 0;
+
+  gl.vertexAttribPointer(
+    positionAttributeLocation,
+    size,
+    dtype,
+    normalize,
+    stride,
+    offset
+  );
+
+  let colorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+
+  setColors(gl);
+
+  gl.enableVertexAttribArray(colorAttributeLocation);
+
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.useProgram(program);
+
+  gl.enableVertexAttribArray(positionAttributeLocation);
+
+  size = 3;
+  dtype = gl.UNSIGNED_BYTE;
+    //color between 0 and 255, normalized 0-1
+  normalize=true;
+  stride=0;
+  offset=0;
+
+  gl.vertexAttribPointer(
+    colorAttributeLocation,
+    size,
+    dtype,
+    normalize,
+    stride,
+    offset
+  );
+
+  function degToRad(d: number): number {
+    return (d * Math.PI) / 180;
+  }
+
+  let fieldOfViewRadians = degToRad(60);
+  let translation = vec3.create();
+  translation[2] = -360;
+  let rotation = [degToRad(0), degToRad(0), degToRad(0)];
+  let scale = vec3.create();
+  scale = [1, 1, 1];
+  let rotationSpeed = 0.5;
+
+  let then = 0;
+
+  requestAnimationFrame(drawScene);
+
+  function drawScene(now: number) {
+    now *= 0.001;
+    let deltaTime = now - then;
+    then = now;
+
+    rotation[1] += rotationSpeed * deltaTime;
+
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.enable(gl.DEPTH_TEST);
+
+    gl.enable(gl.CULL_FACE);
+
+    gl.useProgram(program);
+
+    gl.bindVertexArray(vao);
+
+    let glcanvas = gl.canvas as HTMLCanvasElement;
+    let aspect = glcanvas.clientWidth / glcanvas.clientHeight;
+    let zNear = 1;
+    let zFar = 2000;
+
+    let matrix = mat4.perspective(
+      mat4.create(),
+      fieldOfViewRadians,
+      aspect,
+      zNear,
+      zFar
+    );
+    translation[2] -= 1;
+    matrix = mat4.translate(matrix, matrix, translation);
+    matrix = mat4.rotateX(matrix, matrix, rotation[0]);
+    matrix = mat4.rotateY(matrix, matrix, rotation[1]);
+    matrix = mat4.rotateZ(matrix, matrix, rotation[2]);
+    matrix = mat4.scale(matrix, matrix, scale);
+
+    gl.uniformMatrix4fv(matrixLocation, false, matrix);
+
+    let primitiveType = gl.TRIANGLES;
+    let offset = 0;
+    let count = 30;
+    gl.drawArrays(primitiveType, offset, count);
+
+    requestAnimationFrame(drawScene);
   }
 }
 
-//let fps = new fpsCounter();
+function setGeometry(gl: WebGL2RenderingContext) {
+  let positions = new Float32Array([
+      //3
+        100,100,0,
+        50,50,150,
+        150,50,0,
+        //4
+        150,50,0,
+        50,50,150,
+        100,0,0,
+         //10
+        100,0,0,
+        100,100,0,
+        150,50,0,
+      //1
+        -50,50,0,
+        50,50,150,
+        0,100,0,
+        //2
+        0,100,0,
+        50,50,150,
+        100,100,0,
+        //6
+        0,0,0,
+        50,50,150,
+        -50,50,0,
+        //7
+        0,100,0,
+        0,0,0,
+        -50,50,0,
+        //5
+        100,0,0,
+        50,50,150,
+        0,0,0,
+        //8
+        0,0,0,
+        0,100,0,
+        100,0,0,
+        //9
+        100,0,0,
+        0,100,0,
+        100,100,0,
 
-const renderLoop = () => {
-  //fps.render();
-  murmuration.tick();
+  ]);
+  gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+}
 
-  draw();
-  requestAnimationFrame(renderLoop);
-};
+function setColors(gl: WebGL2RenderingContext) {
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Uint8Array([
+        // left column front
+        200,  70, 120,
+        200,  70, 120,
+        200,  70, 120,
+          // top rung front
+        240,  70, 120,
+        240,  70, 120,
+        240,  70, 120,
 
-const draw = () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const starlingPtr = murmuration.flock();
-  const starlings = new Float32Array(memory.buffer, starlingPtr, size * 4);
-  for (let i = 0; i < starlings.length - 4; i += 4) {
-    drawStarling(
-      starlings[i],
-      starlings[i + 1],
-      starlings[i + 2],
-      starlings[i + 3]
-    );
-  }
-};
+          // middle rung front
+        200,  70, 170,
+        200,  70, 170,
+        200,  70, 170,
 
-//convert this to take a starling object
-const drawStarling = (xpos: number, ypos: number, dx: number, dy: number) => {
-  ctx.beginPath();
-  ctx.ellipse(
-    xpos,
-    ypos,
-    3,
-    1.5,
-    Math.atan(dy / dx),
-    0,
-    Math.PI * 2
+          // left column back
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+
+          // top rung back
+        80, 10, 200,
+        80, 10, 200,
+        80, 10, 200,
+
+          // middle rung back
+        80, 70, 230,
+        80, 70, 230,
+        80, 70, 230,
+          // top
+        70, 200, 210,
+        70, 200, 210,
+        70, 200, 210,
+
+          // top rung right
+        200, 250, 70,
+        200, 250, 70,
+        200, 250, 70,
+
+          // under top rung
+        210, 100, 70,
+        210, 100, 70,
+        210, 100, 70,
+
+          // between top rung and middle
+        210, 160, 70,
+        210, 160, 70,
+        210, 160, 70,
+ 
+    ]),
+    gl.STATIC_DRAW
   );
-  ctx.fill();
-  ctx.closePath();
-};
+}
 
-requestAnimationFrame(renderLoop);
+main();

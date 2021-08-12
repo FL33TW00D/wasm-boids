@@ -84,7 +84,6 @@ function main() {
     gl.enableVertexAttribArray(positionAttributeLocation);
     size = 3;
     dtype = gl.UNSIGNED_BYTE;
-    //color between 0 and 255, normalized 0-1
     normalize = true;
     stride = 0;
     offset = 0;
@@ -118,7 +117,6 @@ function main() {
         let zNear = 1;
         let zFar = 2000;
         let matrix = mat4.perspective(mat4.create(), fieldOfViewRadians, aspect, zNear, zFar);
-        translation[2] -= 1;
         matrix = mat4.translate(matrix, matrix, translation);
         matrix = mat4.rotateX(matrix, matrix, rotation[0]);
         matrix = mat4.rotateY(matrix, matrix, rotation[1]);
@@ -136,36 +134,36 @@ function setGeometry(gl) {
     let positions = new Float32Array([
         //3
         100, 100, 0,
-        50, 50, 150,
         150, 50, 0,
+        50, 50, 150,
         //4
         150, 50, 0,
-        50, 50, 150,
         100, 0, 0,
+        50, 50, 150,
         //10
         100, 0, 0,
         100, 100, 0,
         150, 50, 0,
         //1
         -50, 50, 0,
-        50, 50, 150,
         0, 100, 0,
+        50, 50, 150,
         //2
         0, 100, 0,
-        50, 50, 150,
         100, 100, 0,
+        50, 50, 150,
         //6
         0, 0, 0,
-        50, 50, 150,
         -50, 50, 0,
+        50, 50, 150,
         //7
-        0, 100, 0,
         0, 0, 0,
+        0, 100, 0,
         -50, 50, 0,
         //5
         100, 0, 0,
-        50, 50, 150,
         0, 0, 0,
+        50, 50, 150,
         //8
         0, 0, 0,
         0, 100, 0,
@@ -222,4 +220,5 @@ function setColors(gl) {
     ]), gl.STATIC_DRAW);
 }
 main();
+//# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map
