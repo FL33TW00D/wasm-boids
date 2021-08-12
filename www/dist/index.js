@@ -66,7 +66,7 @@ function main() {
     let vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    setGeometry(gl);
+    createBoid(gl);
     let size = 3;
     let dtype = gl.FLOAT;
     let normalize = false;
@@ -93,13 +93,31 @@ function main() {
         return (d * Math.PI) / 180;
     }
     let fieldOfViewRadians = degToRad(60);
-    let translation = vec3.create();
-    translation[2] = -360;
-    let rotation = [degToRad(0), degToRad(0), degToRad(0)];
+    let rotation = [degToRad(10), degToRad(10), degToRad(10)];
     let scale = vec3.create();
     scale = [1, 1, 1];
     let rotationSpeed = 0.5;
     let then = 0;
+    let entities = [
+        mat4.identity(mat4.create()),
+        mat4.identity(mat4.create()),
+        mat4.identity(mat4.create()),
+        mat4.identity(mat4.create()),
+        mat4.identity(mat4.create()),
+    ];
+    let translation = [
+        vec3.random(vec3.create(), 10),
+        vec3.random(vec3.create(), 10),
+        vec3.random(vec3.create(), 10),
+        vec3.random(vec3.create(), 10),
+        vec3.random(vec3.create(), 10),
+    ];
+    translation[0][2] = -500;
+    translation[1][2] = -500;
+    translation[2][2] = -500;
+    translation[3][2] = -500;
+    translation[4][2] = -500;
+    console.log(translation);
     requestAnimationFrame(drawScene);
     function drawScene(now) {
         now *= 0.001;
@@ -117,22 +135,26 @@ function main() {
         let aspect = glcanvas.clientWidth / glcanvas.clientHeight;
         let zNear = 1;
         let zFar = 2000;
-        let matrix = mat4.perspective(mat4.create(), fieldOfViewRadians, aspect, zNear, zFar);
-        translation[2] -= 1;
-        matrix = mat4.translate(matrix, matrix, translation);
-        matrix = mat4.rotateX(matrix, matrix, rotation[0]);
-        matrix = mat4.rotateY(matrix, matrix, rotation[1]);
-        matrix = mat4.rotateZ(matrix, matrix, rotation[2]);
-        matrix = mat4.scale(matrix, matrix, scale);
-        gl.uniformMatrix4fv(matrixLocation, false, matrix);
-        let primitiveType = gl.TRIANGLES;
-        let offset = 0;
-        let count = 30;
-        gl.drawArrays(primitiveType, offset, count);
+        entities.forEach((mat, ndx) => {
+            let matrix = mat4.perspective(mat, fieldOfViewRadians, aspect, zNear, zFar);
+            translation[ndx][0] -= Math.random() * (ndx + 1);
+            translation[ndx][1] -= Math.random() * (ndx + 1);
+            matrix = mat4.translate(matrix, matrix, translation[ndx]);
+            matrix = mat4.rotateX(matrix, matrix, rotation[0]);
+            matrix = mat4.rotateY(matrix, matrix, rotation[1]);
+            matrix = mat4.rotateZ(matrix, matrix, rotation[2]);
+            matrix = mat4.scale(matrix, matrix, scale);
+            gl.uniformMatrix4fv(matrixLocation, false, matrix);
+            let primitiveType = gl.TRIANGLES;
+            let offset = 0;
+            let count = 30;
+            gl.drawArrays(primitiveType, offset, count);
+        });
         requestAnimationFrame(drawScene);
     }
 }
-function setGeometry(gl) {
+//Defines the 3D shape of a Boid from 10 triangles
+function createBoid(gl) {
     let positions = new Float32Array([
         //3
         100, 100, 0,
