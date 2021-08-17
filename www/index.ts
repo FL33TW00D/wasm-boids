@@ -1,4 +1,6 @@
 import { mat2, mat3, mat4, vec2, vec3, vec4 } from "gl-matrix";
+import { Murmuration, Starling } from "wasm-boids";
+import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 
 function createShader(
   gl: WebGL2RenderingContext,
@@ -42,6 +44,10 @@ function main() {
 
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+
+  const murmuration = Murmuration.new(canvas.width, canvas.height, 700);
+  const flockSize = murmuration.size();
+
   const gl: WebGL2RenderingContext = canvas.getContext("webgl2");
 
   if (!gl) {
@@ -132,10 +138,10 @@ function main() {
 
   size = 3;
   dtype = gl.UNSIGNED_BYTE;
-    //color between 0 and 255, normalized 0-1
-  normalize=true;
-  stride=0;
-  offset=0;
+  //color between 0 and 255, normalized 0-1
+  normalize = true;
+  stride = 0;
+  offset = 0;
 
   gl.vertexAttribPointer(
     colorAttributeLocation,
@@ -151,46 +157,15 @@ function main() {
   }
 
   let fieldOfViewRadians = degToRad(60);
-  let rotation = [degToRad(10), degToRad(10), degToRad(10)];
-  let scale = vec3.create();
-  scale = [1, 1, 1];
-  let rotationSpeed = 0.5;
-
   let then = 0;
 
-  let entities = [
-        mat4.identity(mat4.create()),
-        mat4.identity(mat4.create()),
-        mat4.identity(mat4.create()),
-        mat4.identity(mat4.create()),
-        mat4.identity(mat4.create()),
-  ]
-
-    let translation = [
-        vec3.random(vec3.create(), 10),
-        vec3.random(vec3.create(), 10),
-        vec3.random(vec3.create(), 10),
-        vec3.random(vec3.create(), 10),
-        vec3.random(vec3.create(), 10),
-    ]
-
-    translation[0][2] = -500;
-    translation[1][2] = -500;
-    translation[2][2] = -500;
-    translation[3][2] = -500;
-    translation[4][2] = -500;
-    
-    console.log(translation);
+  const starlingPtr = murmuration.flock();
+  const starlings = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
 
   requestAnimationFrame(drawScene);
 
   function drawScene(now: number) {
-    now *= 0.001;
-    let deltaTime = now - then;
-    then = now;
-
-    rotation[1] += rotationSpeed * deltaTime;
-
+    murmuration.tick(); 
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
     gl.clearColor(0, 0, 0, 0);
@@ -209,32 +184,57 @@ function main() {
     let zNear = 1;
     let zFar = 2000;
 
-    entities.forEach((mat, ndx) => {
-        let matrix = mat4.perspective(
-          mat,
-          fieldOfViewRadians,
-          aspect,
-          zNear,
-          zFar
-        );
-        translation[ndx][0] -= Math.random() * (ndx + 1);
-        translation[ndx][1] -= Math.random() * (ndx + 1);
-        matrix = mat4.translate(matrix, matrix, translation[ndx]);
+    let projectionMatrix = mat4.perspective(
+      mat4.create(),
+      fieldOfViewRadians,
+      aspect,
+      zNear,
+      zFar
+    );
 
-        matrix = mat4.rotateX(matrix, matrix, rotation[0]);
-        matrix = mat4.rotateY(matrix, matrix, rotation[1]);
-        matrix = mat4.rotateZ(matrix, matrix, rotation[2]);
-        matrix = mat4.scale(matrix, matrix, scale);
+    let cameraMatrix = mat4.create();
+    cameraMatrix = mat4.rotateY(cameraMatrix, cameraMatrix, degToRad(0));
 
-        gl.uniformMatrix4fv(matrixLocation, false, matrix);
+    // Make a view matrix from the camera matrix.
+    let viewMatrix = mat4.invert(mat4.create(), cameraMatrix);
 
-        let primitiveType = gl.TRIANGLES;
-        let offset = 0;
-        let count = 30;
-        gl.drawArrays(primitiveType, offset, count);
-            
-      })
+    // move the projection space to view space (the space in front of
+    // the camera)
+    let viewProjectionMatrix = mat4.multiply(
+      mat4.create(),
+      projectionMatrix,
+      viewMatrix
+    );
 
+    //each starling is 6 f32 number
+    for (let i = 0; i < starlings.length - 6; i += 6) {
+      let starling = Starling.new(
+        starlings[i],
+        starlings[i + 1],
+        starlings[i + 2],
+        starlings[i + 3],
+        starlings[i + 4],
+        starlings[i + 5]
+      );
+
+      let t_vec3 = vec3.create();
+      t_vec3[0] = starlings[i];
+      t_vec3[1] = starlings[i + 1];
+      t_vec3[2] = starlings[i + 2] * -1;
+        
+      let translationMatrix = mat4.translate(
+        mat4.create(),
+        viewProjectionMatrix,
+        t_vec3
+      );
+
+      gl.uniformMatrix4fv(matrixLocation, false, translationMatrix);
+
+      let primitiveType = gl.TRIANGLES;
+      let offset = 0;
+      let count = 30;
+      gl.drawArrays(primitiveType, offset, count);
+    }
 
     requestAnimationFrame(drawScene);
   }
@@ -243,47 +243,26 @@ function main() {
 //Defines the 3D shape of a Boid from 10 triangles
 function createBoid(gl: WebGL2RenderingContext) {
   let positions = new Float32Array([
-      //3
-        100,100,0,
-        50,50,150,
-        150,50,0,
-        //4
-        150,50,0,
-        50,50,150,
-        100,0,0,
-         //10
-        100,0,0,
-        100,100,0,
-        150,50,0,
-      //1
-        -50,50,0,
-        50,50,150,
-        0,100,0,
-        //2
-        0,100,0,
-        50,50,150,
-        100,100,0,
-        //6
-        0,0,0,
-        50,50,150,
-        -50,50,0,
-        //7
-        0,100,0,
-        0,0,0,
-        -50,50,0,
-        //5
-        100,0,0,
-        50,50,150,
-        0,0,0,
-        //8
-        0,0,0,
-        0,100,0,
-        100,0,0,
-        //9
-        100,0,0,
-        0,100,0,
-        100,100,0,
-
+    //3
+    100, 100, 0, 50, 50, 150, 150, 50, 0,
+    //4
+    150, 50, 0, 50, 50, 150, 100, 0, 0,
+    //10
+    100, 0, 0, 100, 100, 0, 150, 50, 0,
+    //1
+    -50, 50, 0, 50, 50, 150, 0, 100, 0,
+    //2
+    0, 100, 0, 50, 50, 150, 100, 100, 0,
+    //6
+    0, 0, 0, 50, 50, 150, -50, 50, 0,
+    //7
+    0, 100, 0, 0, 0, 0, -50, 50, 0,
+    //5
+    100, 0, 0, 50, 50, 150, 0, 0, 0,
+    //8
+    0, 0, 0, 0, 100, 0, 100, 0, 0,
+    //9
+    100, 0, 0, 0, 100, 0, 100, 100, 0,
   ]);
   gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 }
@@ -292,54 +271,33 @@ function setColors(gl: WebGL2RenderingContext) {
   gl.bufferData(
     gl.ARRAY_BUFFER,
     new Uint8Array([
-        // left column front
-        200,  70, 120,
-        200,  70, 120,
-        200,  70, 120,
-          // top rung front
-        240,  70, 120,
-        240,  70, 120,
-        240,  70, 120,
+      // left column front
+      200, 70, 120, 200, 70, 120, 200, 70, 120,
+      // top rung front
+      240, 70, 120, 240, 70, 120, 240, 70, 120,
 
-          // middle rung front
-        200,  70, 170,
-        200,  70, 170,
-        200,  70, 170,
+      // middle rung front
+      200, 70, 170, 200, 70, 170, 200, 70, 170,
 
-          // left column back
-        80, 70, 200,
-        80, 70, 200,
-        80, 70, 200,
+      // left column back
+      80, 70, 200, 80, 70, 200, 80, 70, 200,
 
-          // top rung back
-        80, 10, 200,
-        80, 10, 200,
-        80, 10, 200,
+      // top rung back
+      80, 10, 200, 80, 10, 200, 80, 10, 200,
 
-          // middle rung back
-        80, 70, 230,
-        80, 70, 230,
-        80, 70, 230,
-          // top
-        70, 200, 210,
-        70, 200, 210,
-        70, 200, 210,
+      // middle rung back
+      80, 70, 230, 80, 70, 230, 80, 70, 230,
+      // top
+      70, 200, 210, 70, 200, 210, 70, 200, 210,
 
-          // top rung right
-        200, 250, 70,
-        200, 250, 70,
-        200, 250, 70,
+      // top rung right
+      200, 250, 70, 200, 250, 70, 200, 250, 70,
 
-          // under top rung
-        210, 100, 70,
-        210, 100, 70,
-        210, 100, 70,
+      // under top rung
+      210, 100, 70, 210, 100, 70, 210, 100, 70,
 
-          // between top rung and middle
-        210, 160, 70,
-        210, 160, 70,
-        210, 160, 70,
- 
+      // between top rung and middle
+      210, 160, 70, 210, 160, 70, 210, 160, 70,
     ]),
     gl.STATIC_DRAW
   );
