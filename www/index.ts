@@ -2,6 +2,8 @@ import { mat2, mat3, mat4, vec2, vec3, vec4 } from "gl-matrix";
 import { Murmuration, Starling, Position, Velocity } from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 
+
+//Lets switch over to three.js this is silly 
 function createShader(
   gl: WebGL2RenderingContext,
   shaderType: number,
@@ -211,10 +213,6 @@ function main() {
     //each starling is 6 f32 number
     for (let i = 0; i < starlings.length - 6; i += 6) {
 
-      let starPos = new Position(starlings[i], starlings[i+1], starlings[i+2]);
-      let starVel = new Position(starlings[i+3], starlings[i+4], starlings[i+5]);
-      console.log(`StarPos ${JSON.stringify(starPos)}`);
-      console.log(`StarVel ${JSON.stringify(starVel)}`);
       console.log(`JS STARLING: ${starlings[i]} ${starlings[i + 1]} ${starlings[i+2]} ${starlings[i + 3]} ${starlings[i+4]} ${starlings[i+5]}`);
 
       let t_vec3 = vec3.create();

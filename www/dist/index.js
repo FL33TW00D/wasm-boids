@@ -1,5 +1,5 @@
 import { mat4, vec3 } from "gl-matrix";
-import { Murmuration, Position } from "wasm-boids";
+import { Murmuration } from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 function createShader(gl, shaderType, source) {
     let shader = gl.createShader(shaderType);
@@ -127,10 +127,6 @@ function main() {
         let viewProjectionMatrix = mat4.multiply(mat4.create(), projectionMatrix, viewMatrix);
         //each starling is 6 f32 number
         for (let i = 0; i < starlings.length - 6; i += 6) {
-            let starPos = new Position(starlings[i], starlings[i + 1], starlings[i + 2]);
-            let starVel = new Position(starlings[i + 3], starlings[i + 4], starlings[i + 5]);
-            console.log(`StarPos ${JSON.stringify(starPos)}`);
-            console.log(`StarVel ${JSON.stringify(starVel)}`);
             console.log(`JS STARLING: ${starlings[i]} ${starlings[i + 1]} ${starlings[i + 2]} ${starlings[i + 3]} ${starlings[i + 4]} ${starlings[i + 5]}`);
             let t_vec3 = vec3.create();
             t_vec3[0] = starlings[i];
