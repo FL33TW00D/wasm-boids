@@ -19,20 +19,18 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+#[wasm_bindgen]
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct Position {
+pub struct Position {
     x: f32,
     y: f32,
     z: f32,
 }
-
+#[wasm_bindgen]
 impl Position {
-    fn new() -> Self {
-        Position {
-            x: 0.,
-            y: 0.,
-            z: 0.,
-        }
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Position { x, y, z }
     }
 
     fn init_rand(width: u32, height: u32, depth: u32) -> Self {
@@ -44,20 +42,19 @@ impl Position {
     }
 }
 
+#[wasm_bindgen]
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct Velocity {
+pub struct Velocity {
     dx: f32,
     dy: f32,
     dz: f32,
 }
 
+#[wasm_bindgen]
 impl Velocity {
-    fn new() -> Self {
-        Velocity {
-            dx: 0.,
-            dy: 0.,
-            dz: 0.,
-        }
+    #[wasm_bindgen(constructor)]
+    pub fn new(dx: f32, dy: f32, dz: f32) -> Self {
+        Velocity { dx, dy, dz }
     }
 
     fn init_rand(speed: f32) -> Self {
@@ -78,10 +75,11 @@ pub struct Starling {
 
 #[wasm_bindgen]
 impl Starling {
+    #[wasm_bindgen(constructor)]
     pub fn new(x: f32, y: f32, z: f32, dx: f32, dy: f32, dz: f32) -> Self {
         Starling {
-            position: Position { x, y, z },
-            velocity: Velocity { dx, dy, dz },
+            position: Position::new(x, y, z),
+            velocity: Velocity::new(dx, dy, dz),
         }
     }
 
@@ -90,6 +88,16 @@ impl Starling {
             position: Position::init_rand(width, height, depth),
             velocity: Velocity::init_rand(speed_limit),
         }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn get_position(&self) -> Position {
+        self.position
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn get_velocity(&self) -> Velocity {
+        self.velocity
     }
 }
 
@@ -136,6 +144,7 @@ impl Default for Murmuration {
 
 #[wasm_bindgen]
 impl Murmuration {
+    #[wasm_bindgen(constructor)]
     pub fn new(width: u32, height: u32, depth: u32) -> Murmuration {
         utils::set_panic_hook();
         let size = 2;
@@ -174,10 +183,12 @@ impl Murmuration {
         }
     }
 
+    #[wasm_bindgen(getter)]
     pub fn size(&self) -> u32 {
         self.size
     }
 
+    #[wasm_bindgen(getter)]
     pub fn flock(&self) -> *const Starling {
         self.flock.as_ptr()
     }
@@ -215,6 +226,7 @@ impl Murmuration {
             };
 
             self.check_bounds(&mut updated_starling);
+            log!("{:?}", updated_starling);
             new_flock.push(updated_starling);
         }
         self.flock = new_flock;
@@ -247,6 +259,8 @@ impl Murmuration {
         }
 
         //bounds check with a negative Z will be funky, we should abs these
+        //Zspace is negative in the webGL world, but is positive in the Rust world
+        //Need to be very considerate of this§
         if pos.z > (self.depth as f32 - (self.depth as f32 * self.boundary_margin)) {
             vel.dz -= self.boundary_coefficient;
         }
@@ -258,7 +272,7 @@ impl Murmuration {
 
     //Steer to avoid crowding local flockmates
     fn seperate(&self, starling: &Starling, flock: &[Starling], neighbours: &[usize]) -> Position {
-        let mut pos_delta = Position::new();
+        let mut pos_delta = Position::new(0.,0.,0.);
         for idx in neighbours.iter() {
             let pos = flock.get(*idx).unwrap().position;
             pos_delta.x = starling.position.x - pos.x;
@@ -275,7 +289,7 @@ impl Murmuration {
 
     //Steer towards the average heading of local flockmates
     fn align(&self, flock: &[Starling], neighbours: &[usize]) -> Velocity {
-        let mut avg_vel = Velocity::new();
+        let mut avg_vel = Velocity::new(0.,0.,0.);
 
         for idx in neighbours.iter() {
             let vel = flock.get(*idx).unwrap().velocity;
@@ -295,7 +309,7 @@ impl Murmuration {
 
     //Steer to move towards the average position (center of mass) of local flockmates
     fn cohere(&self, starling: &Starling, flock: &[Starling], neighbours: &[usize]) -> Position {
-        let mut avg_pos = Position::new();
+        let mut avg_pos = Position::new(0.,0.,0.);
 
         for idx in neighbours.iter() {
             let pos = flock.get(*idx).unwrap().position;

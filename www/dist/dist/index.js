@@ -9,7 +9,7 @@ function createShader(gl, shaderType, source) {
     if (success) {
         return shader;
     }
-    console.log(gl.getShaderInfoLog(shader));
+    console.log(`Failed to create shader: ${gl.getShaderInfoLog(shader)}`);
     gl.deleteShader(shader);
 }
 function createProgram(gl, vertexShader, fragmentShader) {
@@ -21,7 +21,7 @@ function createProgram(gl, vertexShader, fragmentShader) {
     if (success) {
         return program;
     }
-    console.log(gl.getProgramInfoLog(program));
+    console.log(`Failed to create program: ${gl.getProgramInfoLog(shader)}`);
     gl.deleteProgram(program);
 }
 function main() {
@@ -32,13 +32,14 @@ function main() {
     const flockSize = murmuration.size();
     const gl = canvas.getContext("webgl2");
     if (!gl) {
-        console.log("No WebGL.");
+        console.log("WebGL2 not supported, please try a different browser.");
         return;
     }
     const vertexShaderSource = `#version 300 es
     in vec4 a_position;
     in vec4 a_color;
 
+    //4x4 transformation matrix
     uniform mat4 u_matrix;
 
     out vec4 v_color;
@@ -97,15 +98,12 @@ function main() {
         return (d * Math.PI) / 180;
     }
     let fieldOfViewRadians = degToRad(60);
-    let rotation = [degToRad(10), degToRad(10), degToRad(10)];
-    let scale = vec3.create();
-    scale = [1, 1, 1];
-    let rotationSpeed = 0.5;
     let then = 0;
     const starlingPtr = murmuration.flock();
-    const starlings = new Float32Array(memory.buffer, starlingPtr, size * 4);
+    const starlings = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
     requestAnimationFrame(drawScene);
     function drawScene(now) {
+        murmuration.tick();
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -131,9 +129,12 @@ function main() {
             let t_vec3 = vec3.create();
             t_vec3[0] = starlings[i];
             t_vec3[1] = starlings[i + 1];
-            t_vec3[2] = starlings[i + 2];
+            //because the world space is negative in the Z direction, we need to invert our translation
+            t_vec3[2] = starlings[i + 2] * -1;
             let translationMatrix = mat4.translate(mat4.create(), viewProjectionMatrix, t_vec3);
+            //Set the matrix
             gl.uniformMatrix4fv(matrixLocation, false, translationMatrix);
+            //draw the geometry
             let primitiveType = gl.TRIANGLES;
             let offset = 0;
             let count = 30;
@@ -170,25 +171,15 @@ function createBoid(gl) {
 }
 function setColors(gl) {
     gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array([
-        // left column front
         200, 70, 120, 200, 70, 120, 200, 70, 120,
-        // top rung front
         240, 70, 120, 240, 70, 120, 240, 70, 120,
-        // middle rung front
         200, 70, 170, 200, 70, 170, 200, 70, 170,
-        // left column back
         80, 70, 200, 80, 70, 200, 80, 70, 200,
-        // top rung back
         80, 10, 200, 80, 10, 200, 80, 10, 200,
-        // middle rung back
         80, 70, 230, 80, 70, 230, 80, 70, 230,
-        // top
         70, 200, 210, 70, 200, 210, 70, 200, 210,
-        // top rung right
         200, 250, 70, 200, 250, 70, 200, 250, 70,
-        // under top rung
         210, 100, 70, 210, 100, 70, 210, 100, 70,
-        // between top rung and middle
         210, 160, 70, 210, 160, 70, 210, 160, 70,
     ]), gl.STATIC_DRAW);
 }

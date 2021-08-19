@@ -1,5 +1,5 @@
 import { mat4, vec3 } from "gl-matrix";
-import { Murmuration, Starling } from "wasm-boids";
+import { Murmuration, Position } from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 function createShader(gl, shaderType, source) {
     let shader = gl.createShader(shaderType);
@@ -9,7 +9,7 @@ function createShader(gl, shaderType, source) {
     if (success) {
         return shader;
     }
-    console.log(gl.getShaderInfoLog(shader));
+    console.log(`Failed to create shader: ${gl.getShaderInfoLog(shader)}`);
     gl.deleteShader(shader);
 }
 function createProgram(gl, vertexShader, fragmentShader) {
@@ -21,24 +21,25 @@ function createProgram(gl, vertexShader, fragmentShader) {
     if (success) {
         return program;
     }
-    console.log(gl.getProgramInfoLog(program));
+    console.log(`Failed to create program: ${gl.getProgramInfoLog(program)}`);
     gl.deleteProgram(program);
 }
 function main() {
     const canvas = document.getElementById("canvas");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    const murmuration = Murmuration.new(canvas.width, canvas.height, 700);
-    const flockSize = murmuration.size();
+    const murmuration = new Murmuration(canvas.width, canvas.height, 700);
+    const flockSize = murmuration.size;
     const gl = canvas.getContext("webgl2");
     if (!gl) {
-        console.log("No WebGL.");
+        console.log("WebGL2 not supported, please try a different browser.");
         return;
     }
     const vertexShaderSource = `#version 300 es
     in vec4 a_position;
     in vec4 a_color;
 
+    //4x4 transformation matrix
     uniform mat4 u_matrix;
 
     out vec4 v_color;
@@ -63,6 +64,7 @@ function main() {
     let vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
     let fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
     let program = createProgram(gl, vertexShader, fragmentShader);
+    //Defining variable locations
     let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
     let colorAttributeLocation = gl.getAttribLocation(program, "a_color");
     let matrixLocation = gl.getUniformLocation(program, "u_matrix");
@@ -98,7 +100,7 @@ function main() {
     }
     let fieldOfViewRadians = degToRad(60);
     let then = 0;
-    const starlingPtr = murmuration.flock();
+    const starlingPtr = murmuration.flock;
     const starlings = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
     requestAnimationFrame(drawScene);
     function drawScene(now) {
@@ -114,6 +116,7 @@ function main() {
         let aspect = glcanvas.clientWidth / glcanvas.clientHeight;
         let zNear = 1;
         let zFar = 2000;
+        //The mistakes are all here
         let projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewRadians, aspect, zNear, zFar);
         let cameraMatrix = mat4.create();
         cameraMatrix = mat4.rotateY(cameraMatrix, cameraMatrix, degToRad(0));
@@ -124,13 +127,21 @@ function main() {
         let viewProjectionMatrix = mat4.multiply(mat4.create(), projectionMatrix, viewMatrix);
         //each starling is 6 f32 number
         for (let i = 0; i < starlings.length - 6; i += 6) {
-            let starling = Starling.new(starlings[i], starlings[i + 1], starlings[i + 2], starlings[i + 3], starlings[i + 4], starlings[i + 5]);
+            let starPos = new Position(starlings[i], starlings[i + 1], starlings[i + 2]);
+            let starVel = new Position(starlings[i + 3], starlings[i + 4], starlings[i + 5]);
+            console.log(`StarPos ${JSON.stringify(starPos)}`);
+            console.log(`StarVel ${JSON.stringify(starVel)}`);
+            console.log(`JS STARLING: ${starlings[i]} ${starlings[i + 1]} ${starlings[i + 2]} ${starlings[i + 3]} ${starlings[i + 4]} ${starlings[i + 5]}`);
             let t_vec3 = vec3.create();
             t_vec3[0] = starlings[i];
             t_vec3[1] = starlings[i + 1];
+            //because the world space is negative in the Z direction, we need to invert our translation
             t_vec3[2] = starlings[i + 2] * -1;
+            //I think the mistake is somewhere down here
             let translationMatrix = mat4.translate(mat4.create(), viewProjectionMatrix, t_vec3);
+            //Set the matrix
             gl.uniformMatrix4fv(matrixLocation, false, translationMatrix);
+            //draw the geometry
             let primitiveType = gl.TRIANGLES;
             let offset = 0;
             let count = 30;
@@ -167,25 +178,15 @@ function createBoid(gl) {
 }
 function setColors(gl) {
     gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array([
-        // left column front
         200, 70, 120, 200, 70, 120, 200, 70, 120,
-        // top rung front
         240, 70, 120, 240, 70, 120, 240, 70, 120,
-        // middle rung front
         200, 70, 170, 200, 70, 170, 200, 70, 170,
-        // left column back
         80, 70, 200, 80, 70, 200, 80, 70, 200,
-        // top rung back
         80, 10, 200, 80, 10, 200, 80, 10, 200,
-        // middle rung back
         80, 70, 230, 80, 70, 230, 80, 70, 230,
-        // top
         70, 200, 210, 70, 200, 210, 70, 200, 210,
-        // top rung right
         200, 250, 70, 200, 250, 70, 200, 250, 70,
-        // under top rung
         210, 100, 70, 210, 100, 70, 210, 100, 70,
-        // between top rung and middle
         210, 160, 70, 210, 160, 70, 210, 160, 70,
     ]), gl.STATIC_DRAW);
 }
