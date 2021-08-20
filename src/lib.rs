@@ -147,7 +147,7 @@ impl Murmuration {
     #[wasm_bindgen(constructor)]
     pub fn new(width: u32, height: u32, depth: u32) -> Murmuration {
         utils::set_panic_hook();
-        let size = 2;
+        let size = 10;
         let speed_limit = 70.;
         let visual_field = 5000.;
         let seperation_distance = 600.;
