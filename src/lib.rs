@@ -236,6 +236,7 @@ impl Murmuration {
     }
 
     fn check_bounds(&self, updated_starling: &mut Starling) {
+        log!("Before bounds check: {:?}", updated_starling);
         if updated_starling.x > (self.width as f32 - (self.boundary_margin * self.width as f32)) {
             updated_starling.dx -= self.boundary_coefficient;
         }
@@ -249,15 +250,13 @@ impl Murmuration {
             updated_starling.dy += self.boundary_coefficient;
         }
 
-        //bounds check with a negative Z will be funky, we should abs these
-        //Zspace is negative in the webGL world, but is positive in the Rust world
-        //Need to be very considerate of this§
         if updated_starling.z > (self.depth as f32 - (self.depth as f32 * self.boundary_margin)) {
             updated_starling.dz -= self.boundary_coefficient;
         }
         if updated_starling.z < (self.boundary_margin * self.depth as f32) {
             updated_starling.dz += self.boundary_coefficient;
         }
+        log!("After bounds check: {:?}", updated_starling);
     }
 
     //Steer to avoid crowding local flockmates

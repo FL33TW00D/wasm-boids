@@ -28,6 +28,7 @@
   "homepage": "https://github.com/rustwasm/create-wasm-app#readme",
   "dependencies": {
     "gl-matrix": "^3.3.0",
+    "prettier": "^2.3.2",
     "wasm-boids": "file:../pkg"
   },
   "devDependencies": {
