@@ -208,23 +208,24 @@ impl Murmuration {
             let position_delta = self.seperate(&starling, &self.flock, &local_ids);
             let average_vel = self.align(&self.flock, &visual_ids);
 
-            
-//            log!("Starling before: {:?}", starling);
+            let newdx = starling.dx + center_of_mass.x + position_delta.x + average_vel.dx;
+            let newdy = starling.dy + center_of_mass.y + position_delta.y + average_vel.dy;
+            let newdz = starling.dz + center_of_mass.z + position_delta.z + average_vel.dz;
+
             let mut updated_starling = Starling {
-                x: starling.x + starling.dx + center_of_mass.x + position_delta.x + average_vel.dx,
-                y: starling.y + starling.dy + center_of_mass.y + position_delta.y + average_vel.dy,
-                z: starling.z + starling.dx + center_of_mass.z + position_delta.z + average_vel.dz,
-                dx: starling.dx + center_of_mass.x + position_delta.x + average_vel.dx,
-                dy: starling.dy + center_of_mass.y + position_delta.y + average_vel.dy,
-                dz: starling.dz + center_of_mass.z + position_delta.z + average_vel.dz,
+                x: starling.x + newdx,
+                y: starling.y + newdy,
+                z: starling.z + newdz, 
+                dx: newdx,                
+                dy: newdy,
+                dz: newdz,
             };
-
             
-//            log!("Applied transforms: {:?}", updated_starling);
-            self.limit_speed(&mut updated_starling);
-
+            //limiting the speed is breaking everything
+            //because now there is 3 squared components
+            //self.limit_speed(&mut updated_starling);
             self.check_bounds(&mut updated_starling);
-//            log!("Limited speed and checked bounds: {:?}", updated_starling);
+            log!("{:?}", updated_starling);
             new_flock.push(updated_starling);
         }
         self.flock = new_flock;
