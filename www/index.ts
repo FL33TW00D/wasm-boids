@@ -1,4 +1,4 @@
-import { Murmuration, Starling, Position, Velocity } from "wasm-boids";
+import { Murmuration, Starling} from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 import * as THREE from "three";
 
@@ -47,10 +47,10 @@ function main() {
         cube.position.z = posvec.z;
         return cube;
     }
-    const murmuration = new Murmuration(canvas.width, canvas.height, 700);
-    const flockSize = murmuration.size;
+    const murmuration = Murmuration.new(canvas.width, canvas.height, 700);
+    const flockSize = murmuration.size();
 
-    const starlingPtr = murmuration.flock;
+    const starlingPtr = murmuration.flock();
     const starlingFields = new Float32Array(
         memory.buffer,
         starlingPtr,
@@ -74,6 +74,12 @@ function main() {
 
     function render() {
         murmuration.tick();
+        const starlingPtr = murmuration.flock();
+        const starlingFields = new Float32Array(
+            memory.buffer,
+            starlingPtr,
+            flockSize * 6
+        );
 
         let cubeIdx = 0;
         for (let i = 0; i < starlingFields.length - 5; i += 6) {

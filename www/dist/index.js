@@ -35,9 +35,9 @@ function main() {
         cube.position.z = posvec.z;
         return cube;
     }
-    const murmuration = new Murmuration(canvas.width, canvas.height, 700);
-    const flockSize = murmuration.size;
-    const starlingPtr = murmuration.flock;
+    const murmuration = Murmuration.new(canvas.width, canvas.height, 700);
+    const flockSize = murmuration.size();
+    const starlingPtr = murmuration.flock();
     const starlingFields = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
     const cubes = [];
     for (let i = 0; i < starlingFields.length - 5; i += 6) {
@@ -45,6 +45,8 @@ function main() {
     }
     function render() {
         murmuration.tick();
+        const starlingPtr = murmuration.flock();
+        const starlingFields = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
         let cubeIdx = 0;
         for (let i = 0; i < starlingFields.length - 5; i += 6) {
             console.log(`JS STARLING ${cubeIdx}: ${starlingFields[i]} ${starlingFields[i + 1]} ${starlingFields[i + 2] * -1} ${starlingFields[i + 3]} ${starlingFields[i + 4]} ${starlingFields[i + 5]}`);
