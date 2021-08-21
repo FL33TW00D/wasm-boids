@@ -26,7 +26,7 @@ function main() {
     const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
     function makeInstance(geometry, posvec) {
         const material = new THREE.MeshPhongMaterial({
-            color: "0x" + Math.floor(Math.random() * 16777215).toString(16),
+            color: new THREE.Color(parseInt("0x" + Math.floor(Math.random() * 16777215).toString(16))),
         });
         const cube = new THREE.Mesh(geometry, material);
         scene.add(cube);
@@ -40,26 +40,25 @@ function main() {
     const starlingPtr = murmuration.flock;
     const starlingFields = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
     const cubes = [];
-    console.log(starlingFields.length);
-    for (let i = 5; i < starlingFields.length; i += 5) {
+    console.log(`Starling Fields ${starlingFields.length}`);
+    for (let i = 0; i < starlingFields.length - 5; i += 6) {
         console.log(i);
-        cubes.push(makeInstance(geometry, new THREE.Vector3(starlingFields[i - 5], starlingFields[i - 4], starlingFields[i - 3 * -1])));
+        cubes.push(makeInstance(geometry, new THREE.Vector3(starlingFields[i], starlingFields[i + 1], starlingFields[i + 2] * -1)));
     }
-    console.log(cubes.length);
-    function render(time) {
+    console.log(`CUBES LENGTH ${cubes.length}`);
+    function render() {
         murmuration.tick();
-        time *= 0.001; // convert time to seconds
         let cubeIdx = 0;
-        for (let i = 5; i < starlingFields.length; i += 5) {
-            console.log(`JS STARLING: ${starlingFields[i - 5]} ${starlingFields[i - 4]} ${starlingFields[i - 3]} ${starlingFields[i - 2]} ${starlingFields[i - 1]} ${starlingFields[i]}`);
-            cubes[cubeIdx].position.x = starlingFields[i - 5];
-            cubes[cubeIdx].position.y = starlingFields[i - 4];
-            cubes[cubeIdx++].position.z = starlingFields[i - 3] * -1;
+        for (let i = 0; i < starlingFields.length - 5; i += 6) {
+            console.log(`JS STARLING: ${starlingFields[i]} ${starlingFields[i + 1]} ${starlingFields[i + 2]} ${starlingFields[i + 3]} ${starlingFields[i + 4]} ${starlingFields[i + 5]}`);
+            cubes[cubeIdx].position.x = starlingFields[i];
+            cubes[cubeIdx].position.y = starlingFields[i + 1];
+            cubes[cubeIdx++].position.z = starlingFields[i + 2] * -1;
         }
         renderer.render(scene, camera);
         requestAnimationFrame(render);
     }
-    requestAnimationFrame(render);
+    render();
 }
 main();
 //# sourceMappingURL=index.js.map

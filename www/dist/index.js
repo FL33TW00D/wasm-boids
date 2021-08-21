@@ -40,17 +40,14 @@ function main() {
     const starlingPtr = murmuration.flock;
     const starlingFields = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
     const cubes = [];
-    console.log(`Starling Fields ${starlingFields.length}`);
     for (let i = 0; i < starlingFields.length - 5; i += 6) {
-        console.log(i);
         cubes.push(makeInstance(geometry, new THREE.Vector3(starlingFields[i], starlingFields[i + 1], starlingFields[i + 2] * -1)));
     }
-    console.log(`CUBES LENGTH ${cubes.length}`);
     function render() {
         murmuration.tick();
         let cubeIdx = 0;
         for (let i = 0; i < starlingFields.length - 5; i += 6) {
-            console.log(`JS STARLING: ${starlingFields[i]} ${starlingFields[i + 1]} ${starlingFields[i + 2]} ${starlingFields[i + 3]} ${starlingFields[i + 4]} ${starlingFields[i + 5]}`);
+            console.log(`JS STARLING ${cubeIdx}: ${starlingFields[i]} ${starlingFields[i + 1]} ${starlingFields[i + 2] * -1} ${starlingFields[i + 3]} ${starlingFields[i + 4]} ${starlingFields[i + 5]}`);
             cubes[cubeIdx].position.x = starlingFields[i];
             cubes[cubeIdx].position.y = starlingFields[i + 1];
             cubes[cubeIdx++].position.z = starlingFields[i + 2] * -1;

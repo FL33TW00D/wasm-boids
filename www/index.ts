@@ -58,9 +58,7 @@ function main() {
     );
 
     const cubes: any[] = [];
-    console.log(`Starling Fields ${starlingFields.length}`);
     for (let i = 0; i < starlingFields.length - 5; i += 6) {
-        console.log(i);
         cubes.push(
             makeInstance(
                 geometry,
@@ -73,7 +71,6 @@ function main() {
         );
     }
 
-    console.log(`CUBES LENGTH ${cubes.length}`);
 
     function render() {
         murmuration.tick();
@@ -81,8 +78,8 @@ function main() {
         let cubeIdx = 0;
         for (let i = 0; i < starlingFields.length - 5; i += 6) {
             console.log(
-                `JS STARLING: ${starlingFields[i]} ${starlingFields[i + 1]} ${
-                    starlingFields[i + 2]
+                `JS STARLING ${cubeIdx}: ${starlingFields[i]} ${starlingFields[i + 1]} ${
+                    starlingFields[i + 2] * -1
                 } ${starlingFields[i + 3]} ${starlingFields[i + 4]} ${
                     starlingFields[i + 5]
                 }`
