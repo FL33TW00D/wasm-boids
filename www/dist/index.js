@@ -55,7 +55,7 @@ function main() {
         renderer.render(scene, camera);
         requestAnimationFrame(render);
     }
-    render();
+    requestAnimationFrame(render);
 }
 main();
 //# sourceMappingURL=index.js.map

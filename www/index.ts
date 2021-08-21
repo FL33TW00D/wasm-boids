@@ -94,7 +94,7 @@ function main() {
 
         requestAnimationFrame(render);
     }
-    render();
+    requestAnimationFrame(render);
 }
 
 main();
