@@ -208,6 +208,8 @@ impl Murmuration {
             let position_delta = self.seperate(&starling, &self.flock, &local_ids);
             let average_vel = self.align(&self.flock, &visual_ids);
 
+            
+//            log!("Starling before: {:?}", starling);
             let mut updated_starling = Starling {
                 x: starling.x + starling.dx + center_of_mass.x + position_delta.x + average_vel.dx,
                 y: starling.y + starling.dy + center_of_mass.y + position_delta.y + average_vel.dy,
@@ -217,10 +219,12 @@ impl Murmuration {
                 dz: starling.dz + center_of_mass.z + position_delta.z + average_vel.dz,
             };
 
+            
+//            log!("Applied transforms: {:?}", updated_starling);
             self.limit_speed(&mut updated_starling);
 
             self.check_bounds(&mut updated_starling);
-            log!("{:?}", updated_starling);
+//            log!("Limited speed and checked bounds: {:?}", updated_starling);
             new_flock.push(updated_starling);
         }
         self.flock = new_flock;
@@ -236,7 +240,6 @@ impl Murmuration {
     }
 
     fn check_bounds(&self, updated_starling: &mut Starling) {
-        log!("Before bounds check: {:?}", updated_starling);
         if updated_starling.x > (self.width as f32 - (self.boundary_margin * self.width as f32)) {
             updated_starling.dx -= self.boundary_coefficient;
         }
@@ -256,7 +259,6 @@ impl Murmuration {
         if updated_starling.z < (self.boundary_margin * self.depth as f32) {
             updated_starling.dz += self.boundary_coefficient;
         }
-        log!("After bounds check: {:?}", updated_starling);
     }
 
     //Steer to avoid crowding local flockmates
@@ -272,7 +274,7 @@ impl Murmuration {
         pos_delta.x *= self.seperation_coefficient;
         pos_delta.y *= self.seperation_coefficient;
         pos_delta.z *= self.seperation_coefficient;
-
+        
         pos_delta
     }
 
@@ -292,7 +294,7 @@ impl Murmuration {
             avg_vel.dy = (avg_vel.dy / neighbours.len() as f32) * self.alignment_coefficient;
             avg_vel.dz = (avg_vel.dz / neighbours.len() as f32) * self.alignment_coefficient;
         }
-
+    
         avg_vel
     }
 

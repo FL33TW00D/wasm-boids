@@ -27,8 +27,10 @@
   },
   "homepage": "https://github.com/rustwasm/create-wasm-app#readme",
   "dependencies": {
+    "@types/three": "^0.131.0",
     "gl-matrix": "^3.3.0",
     "prettier": "^2.3.2",
+    "three": "^0.131.3",
     "wasm-boids": "file:../pkg"
   },
   "devDependencies": {
