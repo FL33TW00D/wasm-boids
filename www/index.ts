@@ -14,7 +14,7 @@ function main() {
     const near = 0.1;
     const far = 700;
     const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-    camera.position.z = 2;
+    camera.position.z = 10;
 
     const scene = new THREE.Scene();
 
@@ -26,9 +26,9 @@ function main() {
         scene.add(light);
     }
 
-    const boxWidth = 0.1;
-    const boxHeight = 0.1;
-    const boxDepth = 0.1;
+    const boxWidth = 0.05;
+    const boxHeight = 0.05;
+    const boxDepth = 0.05;
     const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
 
     function makeInstance(geometry: any, posvec: THREE.Vector3) {

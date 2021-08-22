@@ -130,11 +130,11 @@ impl Default for Murmuration {
 impl Murmuration {
     pub fn new(width: u32, height: u32, depth: u32) -> Murmuration {
         utils::set_panic_hook();
-        let size = 10;
-        let speed_limit = 150.;
+        let size = 1000;
+        let speed_limit = 200.;
         let visual_field = 5000.;
-        let seperation_distance = 600.;
-        let seperation_coefficient = 0.05;
+        let seperation_distance = 800.;
+        let seperation_coefficient = 0.1;
         let alignment_coefficient = 0.05;
         let cohesion_coefficient = 0.008;
         //boundary margin and coefficient must be relative to canvas size
@@ -187,6 +187,11 @@ impl Murmuration {
             let position_delta = self.seperate(&starling, &self.flock, &local_ids);
             let average_vel = self.align(&self.flock, &visual_ids);
 
+            /*
+            log!("Center of mass: {:?}", center_of_mass);
+            log!("Position delta: {:?}", position_delta);
+            log!("Average vel: {:?}", average_vel);
+            */
             let mut updated_velocity = Velocity {
                 dx: starling.velocity.dx + center_of_mass.x + position_delta.x + average_vel.dx,
                 dy: starling.velocity.dy + center_of_mass.y + position_delta.y + average_vel.dy,
@@ -199,14 +204,16 @@ impl Murmuration {
                 z: starling.position.z + updated_velocity.dz,
             };
 
+            
+            self.limit_speed(&mut updated_velocity);
             let mut updated_starling = Starling {
                 position: updated_position,
                 velocity: updated_velocity,
             };
 
             //previously was 70 with x and y,
-            self.limit_speed(&mut updated_velocity);
             self.check_bounds(&mut updated_starling);
+           // log!("Updated Starling: {:?}", updated_starling);
             new_flock.push(updated_starling);
         }
         self.flock = new_flock;
@@ -302,7 +309,7 @@ impl Murmuration {
                 * self.cohesion_coefficient;
             avg_pos.y = (avg_pos.y / neighbours.len() as f32 - starling.position.y)
                 * self.cohesion_coefficient;
-            avg_pos.z = (avg_pos.z / neighbours.len() as f32 - starling.position.y)
+            avg_pos.z = (avg_pos.z / neighbours.len() as f32 - starling.position.z)
                 * self.cohesion_coefficient;
         }
 
@@ -311,8 +318,7 @@ impl Murmuration {
 
     //Returns a vector (distance_from_point:f32, vec_idx:&usize)
     fn get_neighbours(&self, starling: &Starling, range: f32) -> Vec<(f32, &usize)> {
-        let mut neighbour_idx = Vec::new();
-        let neighbours = self
+        let mut neighbours = self
             .tree
             .within(
                 &[
@@ -325,26 +331,21 @@ impl Murmuration {
             )
             .unwrap();
 
-        for data in neighbours.iter() {
-            neighbour_idx.push(*data);
-        }
-
-        if neighbour_idx.len() == 1 {
-            neighbour_idx.remove(0);
-        }
-
-        neighbour_idx
+        neighbours.retain(|&neighbour| neighbour.0 != 0.0);
+        neighbours
     }
 
+    //Computes a subset of neighbours within a certain distance
+    //neighbours is a Vec<(distance, &id)>
     fn neighbour_subset(&self, neighbours: &mut Vec<(f32, &usize)>, range: f32) -> Vec<usize> {
-        let partition = neighbours.partition_point(|&x| x.0 < range);
+        let partition = neighbours.partition_point(|&neighbour| neighbour.0 < range);
         self.extract_ids(&neighbours[..partition].to_vec())
     }
 
     fn extract_ids(&self, neighbours: &[(f32, &usize)]) -> Vec<usize> {
         let mut ids = Vec::new();
-        for tup in neighbours.iter() {
-            ids.push(*tup.1);
+        for neighbour in neighbours.iter() {
+            ids.push(*neighbour.1);
         }
         ids
     }
