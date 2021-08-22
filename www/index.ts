@@ -4,17 +4,15 @@ import * as THREE from "three";
 
 function main() {
     const canvas = document.querySelector("#canvas") as HTMLCanvasElement;
-    //    canvas.width = window.innerWidth;
-    //    canvas.height = window.innerHeight;
 
     const renderer = new THREE.WebGLRenderer({ canvas });
 
     const fov = 75;
     const aspect = 2; // the canvas default
     const near = 0.1;
-    const far = 700;
+    const far = 100;
     const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-    camera.position.z = 10;
+    camera.position.z = 3;
 
     const scene = new THREE.Scene();
 
@@ -47,7 +45,7 @@ function main() {
         cube.position.z = posvec.z;
         return cube;
     }
-    const murmuration = Murmuration.new(canvas.width, canvas.height, 700);
+    const murmuration = Murmuration.new(canvas.width, canvas.height, 100);
     const flockSize = murmuration.size();
 
     const starlingPtr = murmuration.flock();
@@ -95,6 +93,7 @@ function main() {
 
         let cubeIdx = 0;
         for (let i = 0; i < starlingFields.length - 5; i += 6) {
+            /*
             console.log(
                 `JS STARLING ${cubeIdx}: ${starlingFields[i] / 300} ${
                     starlingFields[i + 1] / 150
@@ -102,10 +101,10 @@ function main() {
                     starlingFields[i + 4]
                 } ${starlingFields[i + 5]}`
             );
-
+            */
             cubes[cubeIdx].position.x = starlingFields[i] / 300;
             cubes[cubeIdx].position.y = starlingFields[i + 1] / 150;
-            cubes[cubeIdx++].position.z = (starlingFields[i + 2] * -1) / 700;
+            cubes[cubeIdx++].position.z = (starlingFields[i + 2] * -1) / 100;
         }
 
         renderer.render(scene, camera);

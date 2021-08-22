@@ -131,15 +131,17 @@ impl Murmuration {
     pub fn new(width: u32, height: u32, depth: u32) -> Murmuration {
         utils::set_panic_hook();
         let size = 1000;
+        //need different speed limits based on the dimension,
+        //needs to be a proportion of the dimension
         let speed_limit = 200.;
         let visual_field = 5000.;
-        let seperation_distance = 800.;
-        let seperation_coefficient = 0.1;
+        let seperation_distance = 700.;
+        let seperation_coefficient = 0.075;
         let alignment_coefficient = 0.05;
-        let cohesion_coefficient = 0.008;
+        let cohesion_coefficient = 0.005;
         //boundary margin and coefficient must be relative to canvas size
         let boundary_margin = 0.15;
-        let boundary_coefficient = 0.25;
+        let boundary_coefficient = 0.5;
 
         let mut flock: Vec<Starling> = Vec::new();
         for _ in 0..size {
