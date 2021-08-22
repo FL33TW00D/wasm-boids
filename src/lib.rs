@@ -133,7 +133,7 @@ impl Murmuration {
         let size = 1000;
         //need different speed limits based on the dimension,
         //needs to be a proportion of the dimension
-        let speed_limit = 200.;
+        let speed_limit = 150.;
         let visual_field = 5000.;
         let seperation_distance = 700.;
         let seperation_coefficient = 0.075;
@@ -141,7 +141,7 @@ impl Murmuration {
         let cohesion_coefficient = 0.005;
         //boundary margin and coefficient must be relative to canvas size
         let boundary_margin = 0.15;
-        let boundary_coefficient = 0.5;
+        let boundary_coefficient = 0.2;
 
         let mut flock: Vec<Starling> = Vec::new();
         for _ in 0..size {
@@ -189,11 +189,6 @@ impl Murmuration {
             let position_delta = self.seperate(&starling, &self.flock, &local_ids);
             let average_vel = self.align(&self.flock, &visual_ids);
 
-            /*
-            log!("Center of mass: {:?}", center_of_mass);
-            log!("Position delta: {:?}", position_delta);
-            log!("Average vel: {:?}", average_vel);
-            */
             let mut updated_velocity = Velocity {
                 dx: starling.velocity.dx + center_of_mass.x + position_delta.x + average_vel.dx,
                 dy: starling.velocity.dy + center_of_mass.y + position_delta.y + average_vel.dy,
@@ -213,14 +208,14 @@ impl Murmuration {
                 velocity: updated_velocity,
             };
 
-            //previously was 70 with x and y,
             self.check_bounds(&mut updated_starling);
-           // log!("Updated Starling: {:?}", updated_starling);
             new_flock.push(updated_starling);
         }
         self.flock = new_flock;
     }
 
+    //speed limit must be proportional to the scale of the axis
+    //not really sure how this will work
     fn limit_speed(&self, velocity: &mut Velocity) {
         let speed = velocity.dx.powi(2) + velocity.dy.powi(2) + velocity.dz.powi(2);
         if speed > self.speed_limit {
@@ -247,7 +242,6 @@ impl Murmuration {
             vel.dy += self.boundary_coefficient;
         }
 
-        //if pos.z > 595.0
         if pos.z > (self.depth as f32 - (self.depth as f32 * self.boundary_margin)) {
             vel.dz -= self.boundary_coefficient;
         }
@@ -333,6 +327,7 @@ impl Murmuration {
             )
             .unwrap();
 
+        //this is most certainly not efficient
         neighbours.retain(|&neighbour| neighbour.0 != 0.0);
         neighbours
     }
