@@ -12,21 +12,30 @@ import { Murmuration, Starling } from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 import * as THREE from "three";
 
+let HEIGHT = window.innerHeight;
+let WIDTH = window.innerWidth;
+const DEPTH = 400;
+
 function main() {
     const canvas = document.querySelector("#canvas") as HTMLCanvasElement;
 
     const renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        antialias: true,
+        //have to profile how much impact this has on performance
+        antialias:false
     });
 
-    let HEIGHT = window.innerHeight;
-    let WIDTH = window.innerWidth;
+    // Define the size of the renderer; in this case,
+    // it will fill the entire screen
+    renderer.setSize(WIDTH, HEIGHT);
+
+    // Enable shadow rendering
+    renderer.shadowMap.enabled = true;
 
     // Create the camera
     let aspectRatio = WIDTH / HEIGHT;
-    let fieldOfView = 60;
+    let fieldOfView = 75;
     let nearPlane = 1;
     let farPlane = 10000;
     let camera = new THREE.PerspectiveCamera(
@@ -36,37 +45,25 @@ function main() {
         farPlane
     );
 
-    camera.position.z = 4;
+    //need to think about this
+    camera.position.x = 0;
+    camera.position.z = 6;
+    camera.position.y = 2;
 
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0xf7d9aa, 100, 950);
     let ambientLight = new THREE.AmbientLight(0xdc8874, 0.5);
     scene.add(ambientLight);
 
-    const radius = 0.02;
-    const height = 0.1;
+    let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
+    hemisphereLight.position.z = 10;
+    scene.add(hemisphereLight);
+    const radius = 0.01;
+    const height = 0.05;
     const radialSegments = 6;
     const geometry = new THREE.ConeGeometry(radius, height, radialSegments);
 
-    function makeInstance(geometry: any, posvec: THREE.Vector3) {
-        const material = new THREE.MeshPhongMaterial({
-            color: new THREE.Color(
-                parseInt(
-                    "0x321100"
-                    //"0x" + Math.floor(Math.random() * 16777215).toString(16)
-                )
-            ),
-            flatShading: true,
-        });
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
-
-        cube.position.x = posvec.x;
-        cube.position.y = posvec.y;
-        cube.position.z = posvec.z;
-        return cube;
-    }
-    const murmuration = Murmuration.new(canvas.width, canvas.height, 50);
+    const murmuration = Murmuration.new(canvas.width, canvas.height, DEPTH);
     const flockSize = murmuration.size();
 
     const starlingPtr = murmuration.flock();
@@ -76,10 +73,11 @@ function main() {
         flockSize * 6
     );
 
-    const cubes: any[] = [];
+    const boidMeshs: any[] = [];
     for (let i = 0; i < starlingFields.length - 5; i += 6) {
-        cubes.push(
+        boidMeshs.push(
             makeInstance(
+                scene,
                 geometry,
                 new THREE.Vector3(
                     starlingFields[i],
@@ -90,45 +88,10 @@ function main() {
         );
     }
 
-    function resizeRendererToDisplaySize(renderer: any) {
-        const canvas = renderer.domElement;
-        const width = canvas.clientWidth;
-        const height = canvas.clientHeight;
-        const needResize = canvas.width !== width || canvas.height !== height;
-        if (needResize) {
-            renderer.setSize(width, height, false);
-        }
-        return needResize;
-    }
-
     resizeRendererToDisplaySize(renderer);
 
     function render() {
-        murmuration.tick();
-        const starlingPtr = murmuration.flock();
-        const starlingFields = new Float32Array(
-            memory.buffer,
-            starlingPtr,
-            flockSize * 6
-        );
-
-        let cubeIdx = 0;
-        for (let i = 0; i < starlingFields.length - 5; i += 6) {
-            /*
-            console.log(
-                `JS STARLING ${cubeIdx}: ${starlingFields[i] / 300} ${
-                    starlingFields[i + 1] / 150
-                } ${(starlingFields[i + 2] * -1) / 700} ${starlingFields[i + 3]} ${
-                    starlingFields[i + 4]
-                } ${starlingFields[i + 5]}`
-            );
-            */
-            //these need to be normalized to negative, currently really dumb
-            cubes[cubeIdx].position.x = starlingFields[i] / 300;
-            cubes[cubeIdx].position.y = starlingFields[i + 1] / 150;
-            cubes[cubeIdx++].position.z = (starlingFields[i + 2] * -1) / 1000;
-        }
-
+        updateBoids(murmuration, flockSize, boidMeshs);
         renderer.render(scene, camera);
 
         requestAnimationFrame(render);
@@ -136,6 +99,85 @@ function main() {
     requestAnimationFrame(render);
 }
 
-function createLighting() {}
+function makeInstance(
+    scene: THREE.Scene,
+    geometry: any,
+    posvec: THREE.Vector3
+) {
+    const material = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(
+            parseInt(
+                "0x231000"
+            )
+        ),
+        flatShading: true,
+    });
+    //Mesh is just an extension of Object3D
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    mesh.position.x = posvec.x;
+    mesh.position.y = posvec.y;
+    mesh.position.z = posvec.z;
+    return mesh;
+}
+
+function resizeRendererToDisplaySize(renderer: any) {
+    const canvas = renderer.domElement;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    const needResize = canvas.width !== width || canvas.height !== height;
+    if (needResize) {
+        renderer.setSize(width, height, false);
+    }
+    return needResize;
+}
+
+function updateBoids(
+    murmuration: Murmuration,
+    flockSize: number,
+    boidMeshs: THREE.Mesh[]
+) {
+    murmuration.tick();
+    const starlingPtr = murmuration.flock();
+    const starlingFields = new Float32Array(
+        memory.buffer,
+        starlingPtr,
+        flockSize * 6
+    );
+
+    let boidIdx = 0;
+    for (let i = 0; i < starlingFields.length - 5; i += 6) {
+        /*
+        console.log(
+            `JS STARLING ${boidIdx}: ${-1 + (starlingFields[i] / WIDTH) * 2} ${
+                1 + (starlingFields[i + 1] / HEIGHT) * 2
+            } ${starlingFields[i + 2] / DEPTH} ${starlingFields[i + 3]} ${
+                starlingFields[i + 4]
+            } ${starlingFields[i + 5]}`
+        );
+        */
+        boidMeshs[boidIdx].position.x = -1 + (starlingFields[i] / WIDTH) * 2;
+        boidMeshs[boidIdx].position.y =
+            1 + (starlingFields[i + 1] / HEIGHT) * 2;
+        //multiplying by -1 so rust world can be all +ve and z-axis in THREE
+        //world can be -ve
+        //this sucks
+        boidMeshs[boidIdx].position.z =
+            (-1 + starlingFields[i + 2] / DEPTH) * -2;
+
+        var quaternion = new THREE.Quaternion();
+        let yAxis = new THREE.Vector3(0,1,0);
+        let travelVector = new THREE.Vector3(
+                starlingFields[i + 3],
+                starlingFields[i + 4],
+                starlingFields[i + 5] * - 1
+        ).normalize();
+        boidMeshs[boidIdx]
+        quaternion.setFromUnitVectors(yAxis, travelVector);
+        boidMeshs[boidIdx].setRotationFromQuaternion(quaternion);
+        boidIdx++;
+    }
+}
 
 main();

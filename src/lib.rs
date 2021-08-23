@@ -1,3 +1,5 @@
+//TODO
+//1. Remove stupid call to retain
 mod utils;
 
 extern crate js_sys;
@@ -31,6 +33,7 @@ impl Position {
         Position { x, y, z }
     }
 
+    //init rand currently only initializes positive values
     fn init_rand(width: u32, height: u32, depth: u32) -> Self {
         Position {
             x: js_sys::Math::random() as f32 * width as f32,
@@ -94,6 +97,7 @@ pub struct Murmuration {
     flock: Vec<Starling>,
     tree: KdTree<f32, usize, 3>,
     speed_limit: f32,
+    z_speed_limit: f32,
     visual_field: f32,
     seperation_distance: f32,
     seperation_coefficient: f32,
@@ -130,17 +134,20 @@ impl Default for Murmuration {
 impl Murmuration {
     pub fn new(width: u32, height: u32, depth: u32) -> Murmuration {
         utils::set_panic_hook();
-        let size = 1000;
+        log!("Created new murmuration with {:?}, {:?}, {:?}", width, height, depth);
+        let size =2000;
         //need different speed limits based on the dimension,
         //needs to be a proportion of the dimension
-        let speed_limit = 150.;
-        let visual_field = 5000.;
-        let seperation_distance = 700.;
+        let speed_limit = 200.;
+        //z dim is much smaller than x and y
+        let z_speed_limit = 50.;
+        let visual_field = 6000.;
+        let seperation_distance = 1200.;
         let seperation_coefficient = 0.075;
         let alignment_coefficient = 0.05;
-        let cohesion_coefficient = 0.005;
-        //boundary margin and coefficient must be relative to canvas size
-        let boundary_margin = 0.15;
+        let cohesion_coefficient = 0.008;
+        //Some major bug with boundaries going on
+        let boundary_margin = 0.2;
         let boundary_coefficient = 0.2;
 
         let mut flock: Vec<Starling> = Vec::new();
@@ -157,6 +164,7 @@ impl Murmuration {
             depth,
             flock,
             tree,
+            z_speed_limit,
             speed_limit,
             visual_field,
             seperation_distance,
@@ -217,11 +225,12 @@ impl Murmuration {
     //speed limit must be proportional to the scale of the axis
     //not really sure how this will work
     fn limit_speed(&self, velocity: &mut Velocity) {
+        //dimension should factor into proportion of velocity
         let speed = velocity.dx.powi(2) + velocity.dy.powi(2) + velocity.dz.powi(2);
         if speed > self.speed_limit {
             velocity.dx = (velocity.dx / speed) * self.speed_limit;
             velocity.dy = (velocity.dy / speed) * self.speed_limit;
-            velocity.dz = (velocity.dz / speed) * self.speed_limit;
+            velocity.dz = (velocity.dz / speed) * self.z_speed_limit;
         }
     }
 
