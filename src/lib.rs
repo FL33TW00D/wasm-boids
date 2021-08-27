@@ -1,5 +1,3 @@
-//TODO
-//1. Remove stupid call to retain
 mod utils;
 
 extern crate js_sys;
@@ -97,7 +95,7 @@ pub struct Murmuration {
     flock: Vec<Starling>,
     tree: KdTree<f32, usize, 3>,
     speed_limit: f32,
-    z_speed_limit: f32,
+    dimension_sum: f32,
     visual_field: f32,
     seperation_distance: f32,
     seperation_coefficient: f32,
@@ -134,13 +132,15 @@ impl Default for Murmuration {
 impl Murmuration {
     pub fn new(width: u32, height: u32, depth: u32) -> Murmuration {
         utils::set_panic_hook();
-        log!("Created new murmuration with {:?}, {:?}, {:?}", width, height, depth);
-        let size =2000;
-        //need different speed limits based on the dimension,
-        //needs to be a proportion of the dimension
-        let speed_limit = 200.;
-        //z dim is much smaller than x and y
-        let z_speed_limit = 50.;
+        log!(
+            "Created new murmuration with {:?}, {:?}, {:?}",
+            width,
+            height,
+            depth
+        );
+        let size = 50;
+        let speed_limit = 150.;
+        let dimension_sum = (width + height + depth) as f32;
         let visual_field = 6000.;
         let seperation_distance = 1200.;
         let seperation_coefficient = 0.075;
@@ -148,7 +148,7 @@ impl Murmuration {
         let cohesion_coefficient = 0.008;
         //Some major bug with boundaries going on
         let boundary_margin = 0.2;
-        let boundary_coefficient = 0.2;
+        let boundary_coefficient = 1.;
 
         let mut flock: Vec<Starling> = Vec::new();
         for _ in 0..size {
@@ -164,7 +164,7 @@ impl Murmuration {
             depth,
             flock,
             tree,
-            z_speed_limit,
+            dimension_sum,
             speed_limit,
             visual_field,
             seperation_distance,
@@ -209,7 +209,6 @@ impl Murmuration {
                 z: starling.position.z + updated_velocity.dz,
             };
 
-            
             self.limit_speed(&mut updated_velocity);
             let mut updated_starling = Starling {
                 position: updated_position,
@@ -222,18 +221,16 @@ impl Murmuration {
         self.flock = new_flock;
     }
 
-    //speed limit must be proportional to the scale of the axis
-    //not really sure how this will work
+    // speed limit must be proportional to the size of the dimensions
     fn limit_speed(&self, velocity: &mut Velocity) {
         //dimension should factor into proportion of velocity
         let speed = velocity.dx.powi(2) + velocity.dy.powi(2) + velocity.dz.powi(2);
         if speed > self.speed_limit {
             velocity.dx = (velocity.dx / speed) * self.speed_limit;
             velocity.dy = (velocity.dy / speed) * self.speed_limit;
-            velocity.dz = (velocity.dz / speed) * self.z_speed_limit;
+            velocity.dz = (velocity.dz / speed) * self.speed_limit;
         }
     }
-
     fn check_bounds(&self, updated_starling: &mut Starling) {
         let pos = updated_starling.position;
         let mut vel = updated_starling.velocity;

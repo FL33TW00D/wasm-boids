@@ -5,21 +5,20 @@
 //4. Skybox
 //5. Optimize depth calculation
 //6. Setup rust in a web worker
-//7. Use dx, dy, dz values to rotate the starling in the correct direction
 //8. Normalize the bounds of the axis between 0 and 1
 import { Murmuration } from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 import * as THREE from "three";
 let HEIGHT = window.innerHeight;
 let WIDTH = window.innerWidth;
-const DEPTH = 50;
+const DEPTH = 400;
 function main() {
     const canvas = document.querySelector("#canvas");
     const renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
         //have to profile how much impact this has on performance
-        antialias: true,
+        antialias: false
     });
     // Define the size of the renderer; in this case,
     // it will fill the entire screen
@@ -28,20 +27,23 @@ function main() {
     renderer.shadowMap.enabled = true;
     // Create the camera
     let aspectRatio = WIDTH / HEIGHT;
-    let fieldOfView = 60;
+    let fieldOfView = 30;
     let nearPlane = 1;
     let farPlane = 10000;
     let camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
     //need to think about this
     camera.position.x = 0;
-    camera.position.z = 200;
-    camera.position.y = 100;
+    camera.position.z = 6;
+    camera.position.y = 2;
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0xf7d9aa, 100, 950);
     let ambientLight = new THREE.AmbientLight(0xdc8874, 0.5);
     scene.add(ambientLight);
-    const radius = 0.02;
-    const height = 0.1;
+    let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
+    hemisphereLight.position.z = 10;
+    scene.add(hemisphereLight);
+    const radius = 0.01;
+    const height = 0.05;
     const radialSegments = 6;
     const geometry = new THREE.ConeGeometry(radius, height, radialSegments);
     const murmuration = Murmuration.new(canvas.width, canvas.height, DEPTH);
@@ -62,9 +64,7 @@ function main() {
 }
 function makeInstance(scene, geometry, posvec) {
     const material = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(parseInt("0x321100"
-        //"0x" + Math.floor(Math.random() * 16777215).toString(16)
-        )),
+        color: new THREE.Color(parseInt("0x231000")),
         flatShading: true,
     });
     //Mesh is just an extension of Object3D
@@ -91,21 +91,31 @@ function updateBoids(murmuration, flockSize, boidMeshs) {
     const starlingFields = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
     let boidIdx = 0;
     for (let i = 0; i < starlingFields.length - 5; i += 6) {
-        console.log(`JS STARLING ${boidIdx}: ${-1 + (starlingFields[i] / WIDTH) * 2} ${1 + (starlingFields[i + 1] / HEIGHT) * 2} ${(starlingFields[i + 2] / DEPTH)} ${starlingFields[i + 3]} ${starlingFields[i + 4]} ${starlingFields[i + 5]}`);
+        /*
+        console.log(
+            `JS STARLING ${boidIdx}: ${-1 + (starlingFields[i] / WIDTH) * 2} ${
+                1 + (starlingFields[i + 1] / HEIGHT) * 2
+            } ${starlingFields[i + 2] / DEPTH} ${starlingFields[i + 3]} ${
+                starlingFields[i + 4]
+            } ${starlingFields[i + 5]}`
+        );
+        */
         boidMeshs[boidIdx].position.x = -1 + (starlingFields[i] / WIDTH) * 2;
         boidMeshs[boidIdx].position.y =
             1 + (starlingFields[i + 1] / HEIGHT) * 2;
         //multiplying by -1 so rust world can be all +ve and z-axis in THREE
         //world can be -ve
         //this sucks
-        boidMeshs[boidIdx].position.z = (-1 + starlingFields[i + 2] / DEPTH) * -2;
-        boidMeshs[boidIdx].rotation.x = Math.atan(starlingFields[i + 4] / starlingFields[i + 5]);
-        boidMeshs[boidIdx].rotation.z = Math.atan(starlingFields[i + 4] / starlingFields[i + 3]);
+        boidMeshs[boidIdx].position.z =
+            (-1 + starlingFields[i + 2] / DEPTH) * -2;
+        var quaternion = new THREE.Quaternion();
+        let yAxis = new THREE.Vector3(0, 1, 0);
+        let travelVector = new THREE.Vector3(starlingFields[i + 3], starlingFields[i + 4], starlingFields[i + 5] * -1).normalize();
+        boidMeshs[boidIdx];
+        quaternion.setFromUnitVectors(yAxis, travelVector);
+        boidMeshs[boidIdx].setRotationFromQuaternion(quaternion);
         boidIdx++;
     }
-}
-function createLighting() {
-    let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
 }
 main();
 //# sourceMappingURL=index.js.map

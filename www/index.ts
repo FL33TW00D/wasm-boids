@@ -5,7 +5,6 @@
 //4. Skybox
 //5. Optimize depth calculation
 //6. Setup rust in a web worker
-//7. Use dx, dy, dz values to rotate the starling in the correct direction
 //8. Normalize the bounds of the axis between 0 and 1
 
 import { Murmuration, Starling } from "wasm-boids";
@@ -14,7 +13,7 @@ import * as THREE from "three";
 
 let HEIGHT = window.innerHeight;
 let WIDTH = window.innerWidth;
-const DEPTH = 400;
+const DEPTH = 500;
 
 function main() {
     const canvas = document.querySelector("#canvas") as HTMLCanvasElement;
@@ -29,15 +28,16 @@ function main() {
     // Define the size of the renderer; in this case,
     // it will fill the entire screen
     renderer.setSize(WIDTH, HEIGHT);
+    resizeRendererToDisplaySize(renderer);
 
     // Enable shadow rendering
     renderer.shadowMap.enabled = true;
 
     // Create the camera
     let aspectRatio = WIDTH / HEIGHT;
-    let fieldOfView = 75;
+    let fieldOfView = 30;
     let nearPlane = 1;
-    let farPlane = 10000;
+    let farPlane = DEPTH;
     let camera = new THREE.PerspectiveCamera(
         fieldOfView,
         aspectRatio,
@@ -47,13 +47,16 @@ function main() {
 
     //need to think about this
     camera.position.x = 0;
-    camera.position.z = 6;
-    camera.position.y = 2;
+    camera.position.z = 5;
+    camera.position.y = 0;
 
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0xf7d9aa, 100, 950);
     let ambientLight = new THREE.AmbientLight(0xdc8874, 0.5);
     scene.add(ambientLight);
+    
+    const helper = new THREE.CameraHelper( camera );
+    scene.add( helper );
 
     let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
     hemisphereLight.position.z = 10;
@@ -88,10 +91,9 @@ function main() {
         );
     }
 
-    resizeRendererToDisplaySize(renderer);
 
     function render() {
-        updateBoids(murmuration, flockSize, boidMeshs);
+        updateBoids(murmuration, flockSize, boidMeshs, camera);
         renderer.render(scene, camera);
 
         requestAnimationFrame(render);
@@ -136,7 +138,8 @@ function resizeRendererToDisplaySize(renderer: any) {
 function updateBoids(
     murmuration: Murmuration,
     flockSize: number,
-    boidMeshs: THREE.Mesh[]
+    boidMeshs: THREE.Mesh[],
+    camera: any
 ) {
     murmuration.tick();
     const starlingPtr = murmuration.flock();
@@ -157,20 +160,21 @@ function updateBoids(
             } ${starlingFields[i + 5]}`
         );
         */
-        boidMeshs[boidIdx].position.x = -1 + (starlingFields[i] / WIDTH) * 2;
+        
+        console.log(`\n X POS: ${starlingFields[i]} \n Y POS: ${starlingFields[i + 1]} \n
+                     XT: ${(starlingFields[i] / WIDTH) * 2 - 1} \n
+                     YT: ${-(starlingFields[i + 1] / HEIGHT) * 2 + 1}
+            `);
+        boidMeshs[boidIdx].position.x = (starlingFields[i] / WIDTH) * 2 - 1;
         boidMeshs[boidIdx].position.y =
-            1 + (starlingFields[i + 1] / HEIGHT) * 2;
-        //multiplying by -1 so rust world can be all +ve and z-axis in THREE
-        //world can be -ve
-        //this sucks
-        boidMeshs[boidIdx].position.z =
-            (-1 + starlingFields[i + 2] / DEPTH) * -2;
-
+             -(starlingFields[i + 1] / HEIGHT) * 2 + 1;
+        boidMeshs[boidIdx].position.z = (starlingFields[i + 2] / DEPTH) * -1;
+        
         var quaternion = new THREE.Quaternion();
         let yAxis = new THREE.Vector3(0,1,0);
         let travelVector = new THREE.Vector3(
                 starlingFields[i + 3],
-                starlingFields[i + 4],
+                starlingFields[i + 4] * - 1,
                 starlingFields[i + 5] * - 1
         ).normalize();
         boidMeshs[boidIdx]
