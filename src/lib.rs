@@ -138,17 +138,17 @@ impl Murmuration {
             height,
             depth
         );
-        let size = 50;
+        let size = 1500;
         let speed_limit = 150.;
         let dimension_sum = (width + height + depth) as f32;
         let visual_field = 6000.;
-        let seperation_distance = 1200.;
-        let seperation_coefficient = 0.075;
+        let seperation_distance = 900.;
+        let seperation_coefficient = 0.05;
         let alignment_coefficient = 0.05;
-        let cohesion_coefficient = 0.008;
+        let cohesion_coefficient = 0.009;
         //Some major bug with boundaries going on
         let boundary_margin = 0.2;
-        let boundary_coefficient = 1.;
+        let boundary_coefficient = 0.3;
 
         let mut flock: Vec<Starling> = Vec::new();
         for _ in 0..size {
