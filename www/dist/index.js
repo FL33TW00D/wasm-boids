@@ -1,9 +1,6 @@
 //TODO
 //1. Work out correct scaling for the axes
 //2. Custom geometry
-//3. Custom lighting
-//4. Skybox
-//5. Optimize depth calculation
 //6. Setup rust in a web worker
 //7. FPS view toggle
 import { Murmuration } from "wasm-boids";
@@ -12,7 +9,7 @@ import * as THREE from "three";
 import Stats from "stats.js";
 let HEIGHT = window.innerHeight;
 let WIDTH = window.innerWidth;
-const DEPTH = 300;
+const DEPTH = 400;
 let DEBUG = true;
 function main() {
     const canvas = document.querySelector("#canvas");
@@ -29,11 +26,21 @@ function main() {
     resizeRendererToDisplaySize(renderer);
     renderer.shadowMap.enabled = true;
     let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 3000);
+    console.log(`WIDTH: ${WIDTH}, HEIGHT:${HEIGHT}`);
+    /*
+    camera.position.x = (screenToWorldX(WIDTH, WIDTH, camera.aspect, 100) - screenToWorldX(0, WIDTH, camera.aspect, 100)) * 2;
+    camera.position.y = (screenToWorldY(HEIGHT, HEIGHT, 100) - screenToWorldY(0, HEIGHT, 100)) * 2;
+    */
+    console.log(`CAMERA POSITION: ${JSON.stringify(camera.position)}`);
     camera.position.z = 350;
     const scene = new THREE.Scene();
     sceneSetup(scene);
-    const radius = 2;
-    const height = 10;
+    if (DEBUG) {
+        const helper = new THREE.CameraHelper(camera);
+        scene.add(helper);
+    }
+    const radius = 1;
+    const height = 7;
     const radialSegments = 8;
     const geometry = new THREE.ConeGeometry(radius, height, radialSegments);
     if (DEBUG) {
@@ -57,7 +64,6 @@ function makeInstance(scene, geometry, posvec) {
         color: new THREE.Color(parseInt("0x231000")),
         flatShading: true,
     });
-    //Mesh is just an extension of Object3D
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
     mesh.position.x = posvec.x;
@@ -91,7 +97,7 @@ function sceneSetup(scene) {
     let ambientLight = new THREE.AmbientLight(0xdc8874, 0.5);
     scene.add(ambientLight);
     let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
-    hemisphereLight.position.z = 10;
+    hemisphereLight.position.z = 350;
     scene.add(hemisphereLight);
 }
 function debugBoxes(scene) {
@@ -109,8 +115,8 @@ function createMeshes(starlingFields, geometry, scene) {
     return boidMeshs;
 }
 function setBoidPosition(boid, starlingFields, idx, aspect) {
-    boid.position.x = ((starlingFields[idx] / WIDTH) * 2 - 1) * aspect * 100;
-    boid.position.y = (-(starlingFields[idx + 1] / HEIGHT) * 2 + 1) * 100;
+    boid.position.x = screenToWorldX(starlingFields[idx], WIDTH, aspect, 100);
+    boid.position.y = screenToWorldY(starlingFields[idx + 1], HEIGHT, 100);
     boid.position.z = (starlingFields[idx + 2] / DEPTH) * -1;
 }
 function setBoidRotation(boid, starlingFields, idx) {
@@ -119,6 +125,12 @@ function setBoidRotation(boid, starlingFields, idx) {
     let travelVector = new THREE.Vector3(starlingFields[idx + 3], starlingFields[idx + 4] * -1, starlingFields[idx + 5] * -1).normalize();
     quaternion.setFromUnitVectors(yAxis, travelVector);
     boid.setRotationFromQuaternion(quaternion);
+}
+function screenToWorldX(coord, width, aspect, scaleFactor) {
+    return ((coord / width) * 2 - 1) * aspect * scaleFactor;
+}
+function screenToWorldY(coord, height, scaleFactor) {
+    return (-(coord / height) * 2 + 1) * scaleFactor;
 }
 main();
 //# sourceMappingURL=index.js.map

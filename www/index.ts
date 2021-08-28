@@ -11,14 +11,14 @@ import Stats from "stats.js";
 
 let HEIGHT = window.innerHeight;
 let WIDTH = window.innerWidth;
-const DEPTH = 300;
+const DEPTH = 400;
 let DEBUG = true;
 
 function main() {
     const canvas = document.querySelector("#canvas") as HTMLCanvasElement;
     const div = document.getElementById("container");
     let stats = new Stats();
-    div.appendChild(stats.dom)
+    div.appendChild(stats.dom);
 
     const renderer = new THREE.WebGLRenderer({
         canvas,
@@ -37,13 +37,24 @@ function main() {
         1,
         3000
     );
+    console.log(`WIDTH: ${WIDTH}, HEIGHT:${HEIGHT}`);
+    /*
+    camera.position.x = (screenToWorldX(WIDTH, WIDTH, camera.aspect, 100) - screenToWorldX(0, WIDTH, camera.aspect, 100)) * 2;
+    camera.position.y = (screenToWorldY(HEIGHT, HEIGHT, 100) - screenToWorldY(0, HEIGHT, 100)) * 2;
+    */
+    console.log(`CAMERA POSITION: ${JSON.stringify(camera.position)}`);
     camera.position.z = 350;
 
     const scene = new THREE.Scene();
     sceneSetup(scene);
 
-    const radius = 2;
-    const height = 10;
+    if (DEBUG) {
+        const helper = new THREE.CameraHelper(camera);
+        scene.add(helper);
+    }
+
+    const radius = 1;
+    const height = 7;
     const radialSegments = 8;
     const geometry = new THREE.ConeGeometry(radius, height, radialSegments);
 
@@ -80,7 +91,6 @@ function makeInstance(
         color: new THREE.Color(parseInt("0x231000")),
         flatShading: true,
     });
-    //Mesh is just an extension of Object3D
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
 
@@ -128,7 +138,7 @@ function sceneSetup(scene: THREE.Scene) {
     let ambientLight = new THREE.AmbientLight(0xdc8874, 0.5);
     scene.add(ambientLight);
     let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
-    hemisphereLight.position.z = 10;
+    hemisphereLight.position.z = 350;
     scene.add(hemisphereLight);
 }
 
@@ -168,8 +178,8 @@ function setBoidPosition(
     idx: number,
     aspect: number
 ) {
-    boid.position.x = ((starlingFields[idx] / WIDTH) * 2 - 1) * aspect * 100;
-    boid.position.y = (-(starlingFields[idx + 1] / HEIGHT) * 2 + 1) * 100;
+    boid.position.x = screenToWorldX(starlingFields[idx], WIDTH, aspect, 100); 
+    boid.position.y = screenToWorldY(starlingFields[idx + 1], HEIGHT, 100); 
     boid.position.z = (starlingFields[idx + 2] / DEPTH) * -1;
 }
 
@@ -177,16 +187,24 @@ function setBoidRotation(
     boid: THREE.Mesh,
     starlingFields: Float32Array,
     idx: number
-){
-        let quaternion = new THREE.Quaternion();
-        let yAxis = new THREE.Vector3(0, 1, 0);
-        let travelVector = new THREE.Vector3(
-            starlingFields[idx + 3],
-            starlingFields[idx + 4] * -1,
-            starlingFields[idx + 5] * -1
-        ).normalize();
-        quaternion.setFromUnitVectors(yAxis, travelVector);
-        boid.setRotationFromQuaternion(quaternion);
+) {
+    let quaternion = new THREE.Quaternion();
+    let yAxis = new THREE.Vector3(0, 1, 0);
+    let travelVector = new THREE.Vector3(
+        starlingFields[idx + 3],
+        starlingFields[idx + 4] * -1,
+        starlingFields[idx + 5] * -1
+    ).normalize();
+    quaternion.setFromUnitVectors(yAxis, travelVector);
+    boid.setRotationFromQuaternion(quaternion);
+}
+
+function screenToWorldX(coord: number, width: number, aspect: number, scaleFactor: number){
+    return ((coord / width) * 2 - 1) * aspect * scaleFactor;
+}
+
+function screenToWorldY(coord: number, height: number, scaleFactor:number){
+   return (-(coord / height) * 2 + 1) * scaleFactor;
 }
 
 main();
