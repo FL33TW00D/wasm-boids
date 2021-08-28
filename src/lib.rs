@@ -1,3 +1,5 @@
+//TODO
+//1. Write a gravity well in the middle to attract them towards the center
 mod utils;
 
 extern crate js_sys;
@@ -71,6 +73,7 @@ pub struct Starling {
 
 #[wasm_bindgen]
 impl Starling {
+    #[wasm_bindgen(constructor)]
     pub fn new(x: f32, y: f32, z: f32, dx: f32, dy: f32, dz: f32) -> Self {
         Starling {
             position: Position::new(x, y, z),
@@ -95,7 +98,6 @@ pub struct Murmuration {
     flock: Vec<Starling>,
     tree: KdTree<f32, usize, 3>,
     speed_limit: f32,
-    dimension_sum: f32,
     visual_field: f32,
     seperation_distance: f32,
     seperation_coefficient: f32,
@@ -130,25 +132,18 @@ impl Default for Murmuration {
 
 #[wasm_bindgen]
 impl Murmuration {
+    #[wasm_bindgen(constructor)]
     pub fn new(width: u32, height: u32, depth: u32) -> Murmuration {
         utils::set_panic_hook();
-        log!(
-            "Created new murmuration with {:?}, {:?}, {:?}",
-            width,
-            height,
-            depth
-        );
         let size = 1500;
-        let speed_limit = 150.;
-        let dimension_sum = (width + height + depth) as f32;
-        let visual_field = 6000.;
+        let speed_limit = 120.;
+        let visual_field = 5600.;
         let seperation_distance = 900.;
         let seperation_coefficient = 0.05;
         let alignment_coefficient = 0.05;
         let cohesion_coefficient = 0.009;
-        //Some major bug with boundaries going on
         let boundary_margin = 0.2;
-        let boundary_coefficient = 0.3;
+        let boundary_coefficient = 0.25;
 
         let mut flock: Vec<Starling> = Vec::new();
         for _ in 0..size {
@@ -164,7 +159,6 @@ impl Murmuration {
             depth,
             flock,
             tree,
-            dimension_sum,
             speed_limit,
             visual_field,
             seperation_distance,
@@ -221,9 +215,8 @@ impl Murmuration {
         self.flock = new_flock;
     }
 
-    // speed limit must be proportional to the size of the dimensions
+    //To improve this method, it would be good to have per component speed limiting
     fn limit_speed(&self, velocity: &mut Velocity) {
-        //dimension should factor into proportion of velocity
         let speed = velocity.dx.powi(2) + velocity.dy.powi(2) + velocity.dz.powi(2);
         if speed > self.speed_limit {
             velocity.dx = (velocity.dx / speed) * self.speed_limit;
@@ -231,6 +224,7 @@ impl Murmuration {
             velocity.dz = (velocity.dz / speed) * self.speed_limit;
         }
     }
+
     fn check_bounds(&self, updated_starling: &mut Starling) {
         let pos = updated_starling.position;
         let mut vel = updated_starling.velocity;
@@ -333,7 +327,7 @@ impl Murmuration {
             )
             .unwrap();
 
-        //this is most certainly not efficient
+        //is this the most effective way?
         neighbours.retain(|&neighbour| neighbour.0 != 0.0);
         neighbours
     }

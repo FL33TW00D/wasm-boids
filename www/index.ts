@@ -1,14 +1,13 @@
 //TODO
 //1. Work out correct scaling for the axes
 //2. Custom geometry
-//3. Custom lighting
-//4. Skybox
-//5. Optimize depth calculation
 //6. Setup rust in a web worker
+//7. FPS view toggle
 
 import { Murmuration, Starling } from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 import * as THREE from "three";
+import Stats from "stats.js";
 
 let HEIGHT = window.innerHeight;
 let WIDTH = window.innerWidth;
@@ -17,6 +16,9 @@ let DEBUG = true;
 
 function main() {
     const canvas = document.querySelector("#canvas") as HTMLCanvasElement;
+    const div = document.getElementById("container");
+    let stats = new Stats();
+    div.appendChild(stats.dom)
 
     const renderer = new THREE.WebGLRenderer({
         canvas,
@@ -63,8 +65,8 @@ function main() {
     function render() {
         updateBoids(murmuration, flockSize, boidMeshs, camera);
         renderer.render(scene, camera);
-
         requestAnimationFrame(render);
+        stats.update();
     }
     requestAnimationFrame(render);
 }
@@ -166,8 +168,8 @@ function setBoidPosition(
     idx: number,
     aspect: number
 ) {
-    boid.position.x = ((starlingFields[idx] / WIDTH) * 2 - 1) * aspect * 150;
-    boid.position.y = (-(starlingFields[idx + 1] / HEIGHT) * 2 + 1) * 150;
+    boid.position.x = ((starlingFields[idx] / WIDTH) * 2 - 1) * aspect * 100;
+    boid.position.y = (-(starlingFields[idx + 1] / HEIGHT) * 2 + 1) * 100;
     boid.position.z = (starlingFields[idx + 2] / DEPTH) * -1;
 }
 

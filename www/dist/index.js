@@ -5,15 +5,20 @@
 //4. Skybox
 //5. Optimize depth calculation
 //6. Setup rust in a web worker
+//7. FPS view toggle
 import { Murmuration } from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 import * as THREE from "three";
+import Stats from "stats.js";
 let HEIGHT = window.innerHeight;
 let WIDTH = window.innerWidth;
 const DEPTH = 300;
 let DEBUG = true;
 function main() {
     const canvas = document.querySelector("#canvas");
+    const div = document.getElementById("container");
+    let stats = new Stats();
+    div.appendChild(stats.dom);
     const renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
@@ -43,6 +48,7 @@ function main() {
         updateBoids(murmuration, flockSize, boidMeshs, camera);
         renderer.render(scene, camera);
         requestAnimationFrame(render);
+        stats.update();
     }
     requestAnimationFrame(render);
 }
@@ -103,8 +109,8 @@ function createMeshes(starlingFields, geometry, scene) {
     return boidMeshs;
 }
 function setBoidPosition(boid, starlingFields, idx, aspect) {
-    boid.position.x = ((starlingFields[idx] / WIDTH) * 2 - 1) * aspect * 200;
-    boid.position.y = (-(starlingFields[idx + 1] / HEIGHT) * 2 + 1) * 200;
+    boid.position.x = ((starlingFields[idx] / WIDTH) * 2 - 1) * aspect * 100;
+    boid.position.y = (-(starlingFields[idx + 1] / HEIGHT) * 2 + 1) * 100;
     boid.position.z = (starlingFields[idx + 2] / DEPTH) * -1;
 }
 function setBoidRotation(boid, starlingFields, idx) {
