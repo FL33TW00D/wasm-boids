@@ -12,7 +12,8 @@ import * as THREE from "three";
 
 let HEIGHT = window.innerHeight;
 let WIDTH = window.innerWidth;
-const DEPTH = 500;
+const DEPTH = 300;
+let DEBUG = true;
 
 function main() {
     const canvas = document.querySelector("#canvas") as HTMLCanvasElement;
@@ -20,60 +21,36 @@ function main() {
     const renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        //have to profile how much impact this has on performance
         antialias: true,
     });
 
-    // Define the size of the renderer; in this case,
-    // it will fill the entire screen
     renderer.setSize(WIDTH, HEIGHT);
+    renderer.setPixelRatio(window.devicePixelRatio);
     resizeRendererToDisplaySize(renderer);
 
-    // Enable shadow rendering
     renderer.shadowMap.enabled = true;
-
-    // Create the camera
-    let aspectRatio = WIDTH / HEIGHT;
-    let fieldOfView = 30;
-    let nearPlane = 1;
-    let farPlane = DEPTH;
     let camera = new THREE.PerspectiveCamera(
-        fieldOfView,
-        aspectRatio,
-        nearPlane,
-        farPlane
+        75,
+        window.innerWidth / window.innerHeight,
+        1,
+        3000
     );
-
-    //need to think about this
-    camera.position.x = 0;
-    camera.position.z = 4;
-    camera.position.y = 0;
+    camera.position.z = 350;
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0xf7d9aa, 100, 950);
-    let ambientLight = new THREE.AmbientLight(0xdc8874, 0.5);
-    scene.add(ambientLight);
+    sceneSetup(scene);
 
-    const helper = new THREE.CameraHelper(camera);
-    scene.add(helper);
-
-    let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
-    hemisphereLight.position.z = 10;
-    scene.add(hemisphereLight);
-    const radius = 0.005;
-    const height = 0.02;
-    const radialSegments = 6;
+    const radius = 2;
+    const height = 10;
+    const radialSegments = 8;
     const geometry = new THREE.ConeGeometry(radius, height, radialSegments);
 
-    const murmuration = Murmuration.new(canvas.width, canvas.height, DEPTH);
-    const flockSize = murmuration.size();
+    if (DEBUG) {
+        debugBoxes(scene);
+    }
 
-    //test
-    const box = new THREE.BoxGeometry(0.025, 0.025, 0.025);
-    makeInstance(scene, box, new THREE.Vector3(1, 1, -2));
-    makeInstance(scene, box, new THREE.Vector3(1, -1, -2));
-    makeInstance(scene, box, new THREE.Vector3(-1, 1, -2));
-    makeInstance(scene, box, new THREE.Vector3(-1, -1, -2));
+    const murmuration = new Murmuration(canvas.width, canvas.height, DEPTH);
+    const flockSize = murmuration.size();
 
     const starlingPtr = murmuration.flock();
     const starlingFields = new Float32Array(
@@ -82,21 +59,7 @@ function main() {
         flockSize * 6
     );
 
-    const boidMeshs: any[] = [];
-    for (let i = 0; i < starlingFields.length - 5; i += 6) {
-        boidMeshs.push(
-            makeInstance(
-                scene,
-                geometry,
-                new THREE.Vector3(
-                    starlingFields[i],
-                    starlingFields[i + 1],
-                    starlingFields[i + 2] * -1
-                )
-            )
-        );
-    }
-
+    const boidMeshs = createMeshes(starlingFields, geometry, scene);
     function render() {
         updateBoids(murmuration, flockSize, boidMeshs, camera);
         renderer.render(scene, camera);
@@ -152,56 +115,76 @@ function updateBoids(
 
     let boidIdx = 0;
     for (let i = 0; i < starlingFields.length - 5; i += 6) {
-        /*
-        console.log(
-            `JS STARLING ${boidIdx}: ${-1 + (starlingFields[i] / WIDTH) * 2} ${
-                1 + (starlingFields[i + 1] / HEIGHT) * 2
-            } ${starlingFields[i + 2] / DEPTH} ${starlingFields[i + 3]} ${
-                starlingFields[i + 4]
-            } ${starlingFields[i + 5]}`
-        );
-        */
-
-        /*
-        console.log(`\n X POS: ${starlingFields[i]} \n Y POS: ${starlingFields[i + 1]} \n
-                     XT: ${(starlingFields[i] / WIDTH) * 2 - 1} \n
-                     YT: ${-(starlingFields[i + 1] / HEIGHT) * 2 + 1}
-            `);
-            */
-  
-        boidMeshs[boidIdx].position.x = ((starlingFields[i] / WIDTH) * 2 - 1) * camera.aspect;
-        boidMeshs[boidIdx].position.y =
-             -(starlingFields[i + 1] / HEIGHT) * 2 + 1;
-        boidMeshs[boidIdx].position.z = (starlingFields[i + 2] / DEPTH) * -1;
-                
-
-        var quaternion = new THREE.Quaternion();
-        let yAxis = new THREE.Vector3(0, 1, 0);
-        let travelVector = new THREE.Vector3(
-            starlingFields[i + 3],
-            starlingFields[i + 4] * -1,
-            starlingFields[i + 5] * -1
-        ).normalize();
-        boidMeshs[boidIdx];
-        quaternion.setFromUnitVectors(yAxis, travelVector);
-        boidMeshs[boidIdx].setRotationFromQuaternion(quaternion);
+        setBoidPosition(boidMeshs[boidIdx], starlingFields, i, camera.aspect);
+        setBoidRotation(boidMeshs[boidIdx], starlingFields, i);
         boidIdx++;
     }
 }
 
-const visibleHeightAtZDepth = (depth: any, camera: any) => {
-    const cameraOffset = camera.position.z;
-    if (depth < cameraOffset) depth -= cameraOffset;
-    else depth += cameraOffset;
+function sceneSetup(scene: THREE.Scene) {
+    scene.fog = new THREE.Fog(0xf7d9aa, 100, 950);
+    let ambientLight = new THREE.AmbientLight(0xdc8874, 0.5);
+    scene.add(ambientLight);
+    let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
+    hemisphereLight.position.z = 10;
+    scene.add(hemisphereLight);
+}
 
-    const vFOV = (camera.fov * Math.PI) / 180;
+function debugBoxes(scene: THREE.Scene) {
+    const box = new THREE.BoxGeometry(5, 5, 5);
+    makeInstance(scene, box, new THREE.Vector3(100, 100, -2));
+    makeInstance(scene, box, new THREE.Vector3(100, -100, -2));
+    makeInstance(scene, box, new THREE.Vector3(-100, 100, -2));
+    makeInstance(scene, box, new THREE.Vector3(-100, -100, -2));
+}
 
-    return 2 * Math.tan(vFOV / 2) * Math.abs(depth);
-};
+function createMeshes(
+    starlingFields: Float32Array,
+    geometry: THREE.ConeGeometry,
+    scene: THREE.Scene
+) {
+    const boidMeshs: any[] = [];
+    for (let i = 0; i < starlingFields.length - 5; i += 6) {
+        boidMeshs.push(
+            makeInstance(
+                scene,
+                geometry,
+                new THREE.Vector3(
+                    starlingFields[i],
+                    starlingFields[i + 1],
+                    starlingFields[i + 2] * -1
+                )
+            )
+        );
+    }
+    return boidMeshs;
+}
 
-const visibleWidthAtZDepth = (depth: any, camera: any): number => {
-    const height = visibleHeightAtZDepth(depth, camera);
-    return height * camera.aspect;
-};
+function setBoidPosition(
+    boid: THREE.Mesh,
+    starlingFields: Float32Array,
+    idx: number,
+    aspect: number
+) {
+    boid.position.x = ((starlingFields[idx] / WIDTH) * 2 - 1) * aspect * 150;
+    boid.position.y = (-(starlingFields[idx + 1] / HEIGHT) * 2 + 1) * 150;
+    boid.position.z = (starlingFields[idx + 2] / DEPTH) * -1;
+}
+
+function setBoidRotation(
+    boid: THREE.Mesh,
+    starlingFields: Float32Array,
+    idx: number
+){
+        let quaternion = new THREE.Quaternion();
+        let yAxis = new THREE.Vector3(0, 1, 0);
+        let travelVector = new THREE.Vector3(
+            starlingFields[idx + 3],
+            starlingFields[idx + 4] * -1,
+            starlingFields[idx + 5] * -1
+        ).normalize();
+        quaternion.setFromUnitVectors(yAxis, travelVector);
+        boid.setRotationFromQuaternion(quaternion);
+}
 
 main();

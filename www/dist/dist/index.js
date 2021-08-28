@@ -5,58 +5,42 @@
 //4. Skybox
 //5. Optimize depth calculation
 //6. Setup rust in a web worker
-//8. Normalize the bounds of the axis between 0 and 1
 import { Murmuration } from "wasm-boids";
 import { memory } from "wasm-boids/wasm_boids_bg.wasm";
 import * as THREE from "three";
 let HEIGHT = window.innerHeight;
 let WIDTH = window.innerWidth;
-const DEPTH = 400;
+const DEPTH = 300;
+let DEBUG = true;
 function main() {
     const canvas = document.querySelector("#canvas");
     const renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        //have to profile how much impact this has on performance
-        antialias: false
+        antialias: true,
     });
-    // Define the size of the renderer; in this case,
-    // it will fill the entire screen
     renderer.setSize(WIDTH, HEIGHT);
-    // Enable shadow rendering
+    renderer.setPixelRatio(window.devicePixelRatio);
+    resizeRendererToDisplaySize(renderer);
     renderer.shadowMap.enabled = true;
-    // Create the camera
-    let aspectRatio = WIDTH / HEIGHT;
-    let fieldOfView = 30;
-    let nearPlane = 1;
-    let farPlane = 10000;
-    let camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
-    //need to think about this
-    camera.position.x = 0;
-    camera.position.z = 6;
-    camera.position.y = 2;
+    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 3000);
+    camera.position.z = 350;
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0xf7d9aa, 100, 950);
-    let ambientLight = new THREE.AmbientLight(0xdc8874, 0.5);
-    scene.add(ambientLight);
-    let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
-    hemisphereLight.position.z = 10;
-    scene.add(hemisphereLight);
-    const radius = 0.01;
-    const height = 0.05;
-    const radialSegments = 6;
+    sceneSetup(scene);
+    const radius = 2;
+    const height = 10;
+    const radialSegments = 8;
     const geometry = new THREE.ConeGeometry(radius, height, radialSegments);
-    const murmuration = Murmuration.new(canvas.width, canvas.height, DEPTH);
+    if (DEBUG) {
+        debugBoxes(scene);
+    }
+    const murmuration = new Murmuration(canvas.width, canvas.height, DEPTH);
     const flockSize = murmuration.size();
     const starlingPtr = murmuration.flock();
     const starlingFields = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
-    const boidMeshs = [];
-    for (let i = 0; i < starlingFields.length - 5; i += 6) {
-        boidMeshs.push(makeInstance(scene, geometry, new THREE.Vector3(starlingFields[i], starlingFields[i + 1], starlingFields[i + 2] * -1)));
-    }
-    resizeRendererToDisplaySize(renderer);
+    const boidMeshs = createMeshes(starlingFields, geometry, scene);
     function render() {
-        updateBoids(murmuration, flockSize, boidMeshs);
+        updateBoids(murmuration, flockSize, boidMeshs, camera);
         renderer.render(scene, camera);
         requestAnimationFrame(render);
     }
@@ -85,37 +69,50 @@ function resizeRendererToDisplaySize(renderer) {
     }
     return needResize;
 }
-function updateBoids(murmuration, flockSize, boidMeshs) {
+function updateBoids(murmuration, flockSize, boidMeshs, camera) {
     murmuration.tick();
     const starlingPtr = murmuration.flock();
     const starlingFields = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
     let boidIdx = 0;
     for (let i = 0; i < starlingFields.length - 5; i += 6) {
-        /*
-        console.log(
-            `JS STARLING ${boidIdx}: ${-1 + (starlingFields[i] / WIDTH) * 2} ${
-                1 + (starlingFields[i + 1] / HEIGHT) * 2
-            } ${starlingFields[i + 2] / DEPTH} ${starlingFields[i + 3]} ${
-                starlingFields[i + 4]
-            } ${starlingFields[i + 5]}`
-        );
-        */
-        boidMeshs[boidIdx].position.x = -1 + (starlingFields[i] / WIDTH) * 2;
-        boidMeshs[boidIdx].position.y =
-            1 + (starlingFields[i + 1] / HEIGHT) * 2;
-        //multiplying by -1 so rust world can be all +ve and z-axis in THREE
-        //world can be -ve
-        //this sucks
-        boidMeshs[boidIdx].position.z =
-            (-1 + starlingFields[i + 2] / DEPTH) * -2;
-        var quaternion = new THREE.Quaternion();
-        let yAxis = new THREE.Vector3(0, 1, 0);
-        let travelVector = new THREE.Vector3(starlingFields[i + 3], starlingFields[i + 4], starlingFields[i + 5] * -1).normalize();
-        boidMeshs[boidIdx];
-        quaternion.setFromUnitVectors(yAxis, travelVector);
-        boidMeshs[boidIdx].setRotationFromQuaternion(quaternion);
+        setBoidPosition(boidMeshs[boidIdx], starlingFields, i, camera.aspect);
+        setBoidRotation(boidMeshs[boidIdx], starlingFields, i);
         boidIdx++;
     }
+}
+function sceneSetup(scene) {
+    scene.fog = new THREE.Fog(0xf7d9aa, 100, 950);
+    let ambientLight = new THREE.AmbientLight(0xdc8874, 0.5);
+    scene.add(ambientLight);
+    let hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
+    hemisphereLight.position.z = 10;
+    scene.add(hemisphereLight);
+}
+function debugBoxes(scene) {
+    const box = new THREE.BoxGeometry(5, 5, 5);
+    makeInstance(scene, box, new THREE.Vector3(100, 100, -2));
+    makeInstance(scene, box, new THREE.Vector3(100, -100, -2));
+    makeInstance(scene, box, new THREE.Vector3(-100, 100, -2));
+    makeInstance(scene, box, new THREE.Vector3(-100, -100, -2));
+}
+function createMeshes(starlingFields, geometry, scene) {
+    const boidMeshs = [];
+    for (let i = 0; i < starlingFields.length - 5; i += 6) {
+        boidMeshs.push(makeInstance(scene, geometry, new THREE.Vector3(starlingFields[i], starlingFields[i + 1], starlingFields[i + 2] * -1)));
+    }
+    return boidMeshs;
+}
+function setBoidPosition(boid, starlingFields, idx, aspect) {
+    boid.position.x = ((starlingFields[idx] / WIDTH) * 2 - 1) * aspect * 200;
+    boid.position.y = (-(starlingFields[idx + 1] / HEIGHT) * 2 + 1) * 200;
+    boid.position.z = (starlingFields[idx + 2] / DEPTH) * -1;
+}
+function setBoidRotation(boid, starlingFields, idx) {
+    let quaternion = new THREE.Quaternion();
+    let yAxis = new THREE.Vector3(0, 1, 0);
+    let travelVector = new THREE.Vector3(starlingFields[idx + 3], starlingFields[idx + 4] * -1, starlingFields[idx + 5] * -1).normalize();
+    quaternion.setFromUnitVectors(yAxis, travelVector);
+    boid.setRotationFromQuaternion(quaternion);
 }
 main();
 //# sourceMappingURL=index.js.map
