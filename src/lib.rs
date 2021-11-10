@@ -36,9 +36,9 @@ impl Position {
     //init rand currently only initializes positive values
     fn init_rand(width: u32, height: u32, depth: u32) -> Self {
         Position {
-            x: js_sys::Math::random() as f32 * width as f32,
-            y: js_sys::Math::random() as f32 * height as f32,
-            z: js_sys::Math::random() as f32 * depth as f32,
+            x: ((js_sys::Math::random() - 0.5) * 2.) as f32 * width as f32,
+            y: ((js_sys::Math::random() - 0.5) * 2.) as f32 * height as f32,
+            z: ((js_sys::Math::random() - 0.5) * 2.) as f32 * depth as f32,
         }
     }
 }
@@ -57,9 +57,9 @@ impl Velocity {
 
     fn init_rand(speed: f32) -> Self {
         Velocity {
-            dx: js_sys::Math::random() as f32 * speed,
-            dy: js_sys::Math::random() as f32 * speed,
-            dz: js_sys::Math::random() as f32 * speed,
+            dx: ((js_sys::Math::random() - 0.5) * 2.) as f32 * speed,
+            dy: ((js_sys::Math::random() - 0.5) * 2.) as f32 * speed,
+            dz: ((js_sys::Math::random() - 0.5) * 2.) as f32 * speed,
         }
     }
 }
@@ -135,7 +135,7 @@ impl Murmuration {
     #[wasm_bindgen(constructor)]
     pub fn new(width: u32, height: u32, depth: u32) -> Murmuration {
         utils::set_panic_hook();
-        let size = 1500;
+        let size = 2000;
         let speed_limit = 120.;
         let visual_field = 5600.;
         let seperation_distance = 900.;
@@ -250,6 +250,10 @@ impl Murmuration {
             vel.dz += self.boundary_coefficient;
         }
         updated_starling.velocity = vel;
+    }
+
+    fn gravityWell(&self) {
+         
     }
 
     //Steer to avoid crowding local flockmates
