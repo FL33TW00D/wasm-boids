@@ -7,3 +7,4 @@ wasm-pack.log
 www/node_modules
 www/.bin
 node_modules
+**/.DS_Store

@@ -134,7 +134,7 @@ impl Murmuration {
     pub fn new(width: u32, height: u32, depth: u32) -> Murmuration {
         utils::set_panic_hook();
         let size = 2000;
-        let speed_limit = 200.;
+        let speed_limit = 125.;
         let visual_field = 5600.;
         let seperation_distance = 900.;
         let seperation_coefficient = 0.05;
