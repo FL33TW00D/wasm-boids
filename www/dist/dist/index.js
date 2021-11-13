@@ -5,7 +5,7 @@ import Stats from "stats.js";
 let HEIGHT = window.innerHeight;
 let WIDTH = window.innerWidth;
 const DEPTH = 400;
-let DEBUG = false;
+let DEBUG = true;
 function main() {
     const canvas = document.querySelector("#canvas");
     const div = document.getElementById("container");
@@ -43,6 +43,8 @@ function main() {
     }
     const murmuration = new Murmuration(canvas.width, canvas.height, DEPTH);
     const flockSize = murmuration.size();
+    console.log(memory.buffer);
+    console.log(starlingPtr);
     const starlingPtr = murmuration.flock();
     const starlingFields = new Float32Array(memory.buffer, starlingPtr, flockSize * 6);
     const boidMeshs = createMeshes(starlingFields, geometry, scene);
@@ -128,4 +130,5 @@ function screenToWorldY(coord, height, scaleFactor) {
     return (-(coord / height) * 2 + 1) * scaleFactor;
 }
 main();
+//# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map
